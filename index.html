@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>iDiagAuto - Assistant IA Diagnostic Mécanique</title>
+  
+  <!-- Configuration PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Vue 3 CDN -->
@@ -12,50 +19,20 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   
   <style>
-    /* Personnalisation du rendu du rapport technique */
-    .report-content strong {
-      color: #38bdf8; /* Bleu ciel lumineux pour le gras */
-      font-weight: 600;
-    }
-    .report-content em {
-      color: #fbbf24; /* Ambre / jaune pour l'italique et les notes d'atelier */
-      font-style: italic;
-    }
-    .report-content hr {
-      border-color: #334155;
-      margin: 1.25rem 0;
-    }
-    .report-content ul {
-      list-style-type: disc;
-      padding-left: 1.25rem;
-      margin: 0.75rem 0;
-      color: #cbd5e1;
-    }
-    .report-content ol {
-      list-style-type: decimal;
-      padding-left: 1.25rem;
-      margin: 0.75rem 0;
-      color: #cbd5e1;
-    }
-    .report-content li {
-      margin-bottom: 0.4rem;
-    }
-    .report-content p {
-      margin-bottom: 0.75rem;
-    }
-    .report-content h1, .report-content h2, .report-content h3 {
-      color: #f8fafc;
-      font-weight: 700;
-      margin-top: 1rem;
-      margin-bottom: 0.5rem;
-    }
+    .report-content strong { color: #38bdf8; font-weight: 600; }
+    .report-content em { color: #fbbf24; font-style: italic; }
+    .report-content hr { border-color: #334155; margin: 1.25rem 0; }
+    .report-content ul { list-style-type: disc; padding-left: 1.25rem; margin: 0.75rem 0; color: #cbd5e1; }
+    .report-content ol { list-style-type: decimal; padding-left: 1.25rem; margin: 0.75rem 0; color: #cbd5e1; }
+    .report-content li { margin-bottom: 0.4rem; }
+    .report-content p { margin-bottom: 0.75rem; }
   </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen">
   <div id="app" class="max-w-3xl mx-auto px-4 py-8">
     
     <!-- En-tête -->
-    <header class="text-center mb-8">
+    <header class="text-center mb-6">
       <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-950/80 border border-blue-800 text-blue-400 text-xs font-semibold mb-3">
         <span>⚡ Diagnostic atelier assisté par IA</span>
       </div>
@@ -65,7 +42,32 @@
       <p class="mt-2 text-sm text-slate-400">
         Analyse de codes DTC et aide à la recherche de panne pas-à-pas
       </p>
+
+      <!-- Bouton Installer l'application (PWA) -->
+      <div v-if="deferredPrompt" class="mt-4">
+        <button 
+          @click="installPwa"
+          class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow-md transition cursor-pointer"
+        >
+          📱 Installer l'application sur le téléphone
+        </button>
+      </div>
     </header>
+
+    <!-- Raccourcis de tests rapides -->
+    <div class="mb-4">
+      <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">Exemples rapides :</span>
+      <div class="flex flex-wrap gap-2">
+        <button 
+          v-for="example in examples" 
+          :key="example.dtc"
+          @click="fillExample(example)"
+          class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-md text-xs text-slate-300 transition cursor-pointer"
+        >
+          {{ example.vehicle }} · <span class="font-mono text-blue-400">{{ example.dtc }}</span>
+        </button>
+      </div>
+    </div>
 
     <!-- Formulaire -->
     <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-6 shadow-xl mb-8">
@@ -141,7 +143,7 @@
         </button>
       </div>
 
-      <!-- Contenu Markdown parsé et stylisé -->
+      <!-- Contenu Markdown parsé -->
       <div class="report-content text-sm text-slate-200 leading-relaxed" v-html="parsedReport"></div>
 
       <!-- Encart de soutien -->
@@ -196,27 +198,54 @@
 
     createApp({
       setup() {
-        const form = ref({
-          vehicle: '',
-          dtc_code: '',
-          symptoms: ''
-        });
-
+        const form = ref({ vehicle: '', dtc_code: '', symptoms: '' });
         const activeVehicle = ref('');
         const loading = ref(false);
         const report = ref('');
         const error = ref('');
         const copied = ref(false);
         const history = ref([]);
+        const deferredPrompt = ref(null);
+
+        const examples = [
+          { vehicle: 'BMW 320i E36', dtc: 'P0340', symptoms: 'Manque de puissance, calage à chaud' },
+          { vehicle: 'Opel Meriva 1.7 CDTI', dtc: 'P0190', symptoms: 'Voyant moteur, accoups à l\'accélération' },
+          { vehicle: 'Renault Clio 3 1.5 dCi', dtc: 'DF053', symptoms: 'Démarrage difficile' }
+        ];
 
         onMounted(() => {
+          // Enregistrement du service worker pour la PWA
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(console.error);
+          }
+
+          // Détection de l'événement d'installation PWA
+          window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt.value = e;
+          });
+
+          // Chargement de l'historique
           const saved = localStorage.getItem('idiagauto_history');
           if (saved) {
-            try {
-              history.value = JSON.parse(saved);
-            } catch (e) {}
+            try { history.value = JSON.parse(saved); } catch (e) {}
           }
         });
+
+        const installPwa = async () => {
+          if (!deferredPrompt.value) return;
+          deferredPrompt.value.prompt();
+          const { outcome } = await deferredPrompt.value.userChoice;
+          if (outcome === 'accepted') {
+            deferredPrompt.value = null;
+          }
+        };
+
+        const fillExample = (ex) => {
+          form.value.vehicle = ex.vehicle;
+          form.value.dtc_code = ex.dtc;
+          form.value.symptoms = ex.symptoms;
+        };
 
         const parsedReport = computed(() => {
           return report.value ? marked.parse(report.value) : '';
@@ -297,6 +326,10 @@
           copied, 
           history, 
           parsedReport, 
+          deferredPrompt,
+          examples,
+          installPwa,
+          fillExample,
           runDiagnostic, 
           copyReport, 
           loadFromHistory, 
