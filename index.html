@@ -230,7 +230,7 @@
           activeVehicle.value = form.value.vehicle;
 
           try {
-            const response = await fetch('http://127.0.0.1:8080/api/diagnose', {
+            const response = await fetch('https://idiagauto.onrender.com/api/diagnose', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(form.value)
