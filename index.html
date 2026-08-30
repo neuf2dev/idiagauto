@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iDiagAuto - Assistant IA Diagnostic Mécanique</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Vue 3 CDN -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <!-- Marked.js pour le rendu Markdown -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
+  <style>
+    /* Personnalisation du rendu du rapport technique */
+    .report-content strong {
+      color: #38bdf8; /* Bleu ciel lumineux pour le gras */
+      font-weight: 600;
+    }
+    .report-content em {
+      color: #fbbf24; /* Ambre / jaune pour l'italique et les notes d'atelier */
+      font-style: italic;
+    }
+    .report-content hr {
+      border-color: #334155;
+      margin: 1.25rem 0;
+    }
+    .report-content ul {
+      list-style-type: disc;
+      padding-left: 1.25rem;
+      margin: 0.75rem 0;
+      color: #cbd5e1;
+    }
+    .report-content ol {
+      list-style-type: decimal;
+      padding-left: 1.25rem;
+      margin: 0.75rem 0;
+      color: #cbd5e1;
+    }
+    .report-content li {
+      margin-bottom: 0.4rem;
+    }
+    .report-content p {
+      margin-bottom: 0.75rem;
+    }
+    .report-content h1, .report-content h2, .report-content h3 {
+      color: #f8fafc;
+      font-weight: 700;
+      margin-top: 1rem;
+      margin-bottom: 0.5rem;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+  <div id="app" class="max-w-3xl mx-auto px-4 py-8">
+    
+    <!-- En-tête -->
+    <header class="text-center mb-8">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-950/80 border border-blue-800 text-blue-400 text-xs font-semibold mb-3">
+        <span>⚡ Diagnostic atelier assisté par IA</span>
+      </div>
+      <h1 class="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+        iDiag<span class="text-blue-500">Auto</span>
+      </h1>
+      <p class="mt-2 text-sm text-slate-400">
+        Analyse de codes DTC et aide à la recherche de panne pas-à-pas
+      </p>
+    </header>
+
+    <!-- Formulaire -->
+    <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-6 shadow-xl mb-8">
+      <form @submit.prevent="runDiagnostic" class="space-y-4">
+        
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+            Véhicule *
+          </label>
+          <input 
+            v-model="form.vehicle" 
+            type="text" 
+            required 
+            placeholder="Ex : BMW Série 3 E36 320i 1998, Opel Meriva 1.7 CDTI..." 
+            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+          />
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+              Code défaut (DTC)
+            </label>
+            <input 
+              v-model="form.dtc_code" 
+              type="text" 
+              placeholder="Ex : P0340, P0170, DF154..." 
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 uppercase focus:outline-none focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+              Symptômes observés
+            </label>
+            <input 
+              v-model="form.symptoms" 
+              type="text" 
+              placeholder="Ex : Ralenti instable, calage..." 
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+            />
+          </div>
+        </div>
+
+        <button 
+          type="submit" 
+          :disabled="loading"
+          class="w-full mt-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold py-3 px-4 rounded-lg transition duration-150 ease-in-out flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <span v-if="loading" class="animate-spin">⏳</span>
+          <span>{{ loading ? 'Analyse technique en cours...' : 'Lancer le diagnostic' }}</span>
+        </button>
+      </form>
+
+      <div v-if="error" class="mt-4 p-3 bg-red-950/60 border border-red-800 rounded-lg text-red-300 text-xs">
+        {{ error }}
+      </div>
+    </div>
+
+    <!-- Rapport de diagnostic -->
+    <div v-if="report" class="bg-slate-800/90 border border-slate-700 rounded-xl p-6 shadow-xl mb-8 space-y-6">
+      <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+        <div>
+          <h2 class="text-lg font-bold text-white">Rapport technique</h2>
+          <span class="text-xs text-slate-400">{{ activeVehicle }}</span>
+        </div>
+        
+        <!-- Bouton Copier -->
+        <button 
+          @click="copyReport"
+          class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg transition border border-slate-600 cursor-pointer"
+        >
+          <span>{{ copied ? '✅ Copié !' : '📋 Copier le rapport' }}</span>
+        </button>
+      </div>
+
+      <!-- Contenu Markdown parsé et stylisé -->
+      <div class="report-content text-sm text-slate-200 leading-relaxed" v-html="parsedReport"></div>
+
+      <!-- Encart de soutien -->
+      <div class="mt-8 pt-6 border-t border-slate-700/80 bg-slate-900/60 -mx-6 -mb-6 p-6 rounded-b-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="text-xs text-slate-400 text-center sm:text-left">
+          <p class="font-semibold text-slate-200">Ce diagnostic t'a fait gagner du temps ?</p>
+          <p>Soutiens l'hébergement et les requêtes IA pour garder l'outil gratuit.</p>
+        </div>
+        <a 
+          href="https://buymeacoffee.com" 
+          target="_blank" 
+          class="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-lg text-xs transition shrink-0"
+        >
+          ☕ Offrir un café au dev
+        </a>
+      </div>
+    </div>
+
+    <!-- Historique des diagnostics (LocalStorage) -->
+    <div v-if="history.length > 0" class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider">Historique récent</h3>
+        <button @click="clearHistory" class="text-xs text-slate-500 hover:text-red-400 transition cursor-pointer">
+          Effacer l'historique
+        </button>
+      </div>
+      <div class="space-y-2">
+        <div 
+          v-for="(item, index) in history" 
+          :key="index"
+          @click="loadFromHistory(item)"
+          class="flex items-center justify-between p-3 rounded-lg bg-slate-900/80 hover:bg-slate-700/50 border border-slate-800 cursor-pointer transition text-xs"
+        >
+          <div>
+            <span class="font-semibold text-white">{{ item.vehicle }}</span>
+            <span v-if="item.dtc_code" class="ml-2 px-1.5 py-0.5 rounded bg-blue-950 text-blue-400 font-mono text-[11px] border border-blue-900">
+              {{ item.dtc_code }}
+            </span>
+            <span v-if="item.symptoms" class="ml-2 text-slate-400 italic truncate max-w-[200px] inline-block align-bottom">
+              {{ item.symptoms }}
+            </span>
+          </div>
+          <span class="text-slate-500 text-[11px]">{{ item.date }}</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const { createApp, ref, computed, onMounted } = Vue;
+
+    createApp({
+      setup() {
+        const form = ref({
+          vehicle: '',
+          dtc_code: '',
+          symptoms: ''
+        });
+
+        const activeVehicle = ref('');
+        const loading = ref(false);
+        const report = ref('');
+        const error = ref('');
+        const copied = ref(false);
+        const history = ref([]);
+
+        onMounted(() => {
+          const saved = localStorage.getItem('idiagauto_history');
+          if (saved) {
+            try {
+              history.value = JSON.parse(saved);
+            } catch (e) {}
+          }
+        });
+
+        const parsedReport = computed(() => {
+          return report.value ? marked.parse(report.value) : '';
+        });
+
+        const runDiagnostic = async () => {
+          loading.value = true;
+          error.value = '';
+          report.value = '';
+          copied.value = false;
+          activeVehicle.value = form.value.vehicle;
+
+          try {
+            const response = await fetch('http://127.0.0.1:8080/api/diagnose', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(form.value)
+            });
+
+            if (!response.ok) {
+              const errData = await response.json();
+              throw new Error(errData.detail || 'Erreur serveur');
+            }
+
+            const data = await response.json();
+            report.value = data.report;
+
+            const newEntry = {
+              vehicle: form.value.vehicle,
+              dtc_code: form.value.dtc_code,
+              symptoms: form.value.symptoms,
+              report: data.report,
+              date: new Date().toLocaleDateString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+            };
+            history.value = [newEntry, ...history.value.filter(h => h.report !== data.report)].slice(0, 10);
+            localStorage.setItem('idiagauto_history', JSON.stringify(history.value));
+
+          } catch (e) {
+            error.value = e.message || 'Impossible de joindre le serveur API.';
+          } finally {
+            loading.value = false;
+          }
+        };
+
+        const copyReport = async () => {
+          if (!report.value) return;
+          try {
+            await navigator.clipboard.writeText(
+              `=== Rapport iDiagAuto - ${activeVehicle.value} ===\n\n` + report.value
+            );
+            copied.value = true;
+            setTimeout(() => { copied.value = false; }, 2000);
+          } catch (err) {
+            console.error('Erreur copie :', err);
+          }
+        };
+
+        const loadFromHistory = (item) => {
+          form.value.vehicle = item.vehicle;
+          form.value.dtc_code = item.dtc_code || '';
+          form.value.symptoms = item.symptoms || '';
+          activeVehicle.value = item.vehicle;
+          report.value = item.report;
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        const clearHistory = () => {
+          history.value = [];
+          localStorage.removeItem('idiagauto_history');
+        };
+
+        return { 
+          form, 
+          activeVehicle, 
+          loading, 
+          report, 
+          error, 
+          copied, 
+          history, 
+          parsedReport, 
+          runDiagnostic, 
+          copyReport, 
+          loadFromHistory, 
+          clearHistory 
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
