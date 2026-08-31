@@ -164,7 +164,7 @@
         </div>
       </div>
 
-      <!-- Encart Visuel : Photo prise en compte pour le diag -->
+      <!-- Encart Visuel : Photo analysée -->
       <div v-if="activeImage" class="p-3 bg-slate-900/80 rounded-xl border border-blue-900/50 flex items-center gap-3">
         <img :src="activeImage" alt="Élément analysé" class="h-16 w-16 object-cover rounded-lg border border-slate-700 shrink-0" />
         <div class="text-xs">
@@ -555,35 +555,48 @@
           exportingPdf.value = true;
 
           const element = document.createElement('div');
-          element.style.padding = '20px';
+          element.style.padding = '24px';
           element.style.fontFamily = 'Helvetica, Arial, sans-serif';
-          element.style.color = '#1e293b';
+          element.style.color = '#0f172a';
           element.style.background = '#ffffff';
 
           let imageHtml = '';
           if (activeImage.value) {
             imageHtml = `
-              <div style="margin-bottom: 16px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; display: flex; align-items: center; gap: 12px; background: #f1f5f9;">
-                <img src="${activeImage.value}" style="height: 70px; border-radius: 4px; object-fit: cover;" />
+              <div style="margin-bottom: 16px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; display: flex; align-items: center; gap: 14px; background: #f8fafc;">
+                <img src="${activeImage.value}" style="max-height: 80px; max-width: 120px; border-radius: 4px; object-fit: cover;" />
                 <div style="font-size: 11px; color: #475569;">
-                  <strong style="color: #0f172a;">Élément photographié joint :</strong><br/>
-                  Pièce ou écran analysé par l'IA dans ce diagnostic.
+                  <strong style="color: #0f172a;">Photo technique jointe :</strong><br/>
+                  Élément ou mesure transmis pour l'évaluation.
                 </div>
               </div>
             `;
           }
 
+          let checklistHtml = '';
+          if (checklist.value.length > 0) {
+            checklistHtml = `
+              <div style="margin-bottom: 16px; padding: 12px; background: #f1f5f9; border-radius: 6px;">
+                <strong style="font-size: 12px; color: #1e293b; text-transform: uppercase;">Points de contrôle d'atelier :</strong>
+                <ul style="margin: 6px 0 0 0; padding-left: 18px; font-size: 11px; color: #334155;">
+                  ${checklist.value.map(c => `<li style="margin-bottom: 3px;">[ ${c.checked ? '✔' : ' '} ] ${c.text}</li>`).join('')}
+                </ul>
+              </div>
+            `;
+          }
+
           element.innerHTML = `
-            <div style="border-bottom: 2px solid #2563eb; padding-bottom: 12px; margin-bottom: 16px;">
+            <div style="border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 14px;">
               <h1 style="color: #2563eb; margin: 0; font-size: 20px;">iDiagAuto — Fiche Diagnostic Atelier</h1>
               <p style="color: #64748b; margin: 4px 0 0 0; font-size: 11px;">Véhicule : <strong>${activeVehicle.value}</strong> | Date : ${new Date().toLocaleDateString('fr-FR')}</p>
             </div>
-            <div style="padding: 8px 12px; background: #f8fafc; border-left: 4px solid #2563eb; margin-bottom: 14px;">
-              <strong style="font-size: 13px;">Urgence : ${severityLabel.value}</strong><br/>
-              <span style="font-size: 11px; color: #475569;">${severityAdvice.value}</span>
+            <div style="padding: 8px 12px; background: #fef3c7; border-left: 4px solid #f59e0b; margin-bottom: 14px;">
+              <strong style="font-size: 12px; color: #92400e;">Niveau : ${severityLabel.value}</strong><br/>
+              <span style="font-size: 11px; color: #78350f;">${severityAdvice.value}</span>
             </div>
             ${imageHtml}
-            <div style="font-size: 12px; line-height: 1.55;">
+            ${checklistHtml}
+            <div style="font-size: 12px; line-height: 1.55; color: #1e293b;">
               ${marked.parse(report.value)}
             </div>
             <div style="margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 6px; font-size: 9px; color: #94a3b8; text-align: center;">
@@ -592,11 +605,12 @@
           `;
 
           const opt = {
-            margin: 10,
+            margin: [10, 10, 10, 10],
             filename: `iDiagAuto_${activeVehicle.value.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2 },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
           };
 
           html2pdf().set(opt).from(element).save().then(() => {
