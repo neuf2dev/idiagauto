@@ -38,7 +38,7 @@
         iDiag<span class="text-blue-500">Auto</span>
       </h1>
       <p class="mt-2 text-sm text-slate-400">
-        Analyse de codes DTC, photos de valise et recherche de panne pas-à-pas
+        Analyse de codes DTC, photos de pièces et recherche de panne pas-à-pas
       </p>
 
       <div class="mt-4">
@@ -164,6 +164,19 @@
         </div>
       </div>
 
+      <!-- Encart Visuel : Photo prise en compte pour le diag -->
+      <div v-if="activeImage" class="p-3 bg-slate-900/80 rounded-xl border border-blue-900/50 flex items-center gap-3">
+        <img :src="activeImage" alt="Élément analysé" class="h-16 w-16 object-cover rounded-lg border border-slate-700 shrink-0" />
+        <div class="text-xs">
+          <p class="font-bold text-blue-400 flex items-center gap-1.5">
+            <span>📷 Pièce / Écran analysé par l'IA</span>
+          </p>
+          <p class="text-slate-400 text-[11px] mt-0.5">
+            L'analyse technique ci-dessous intègre les indices visuels repérés sur cette photo.
+          </p>
+        </div>
+      </div>
+
       <!-- En-tête du Rapport -->
       <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 pb-3">
         <div>
@@ -198,7 +211,6 @@
           <span class="text-[11px] font-mono text-slate-400">{{ completedCount }}/{{ checklist.length }} validé(s)</span>
         </div>
 
-        <!-- Barre de progression -->
         <div class="w-full bg-slate-800 rounded-full h-1.5 mb-3 overflow-hidden">
           <div class="bg-blue-500 h-1.5 transition-all duration-300" :style="{ width: progressPercent + '%' }"></div>
         </div>
@@ -321,12 +333,13 @@
           @click="loadFromHistory(item)"
           class="flex items-center justify-between p-3 rounded-lg bg-slate-900/80 hover:bg-slate-700/50 border border-slate-800 cursor-pointer transition text-xs"
         >
-          <div>
+          <div class="flex items-center gap-2">
+            <span v-if="item.image" class="text-base">📷</span>
             <span class="font-semibold text-white">{{ item.vehicle }}</span>
-            <span v-if="item.dtc_code" class="ml-2 px-1.5 py-0.5 rounded bg-blue-950 text-blue-400 font-mono text-[11px] border border-blue-900">
+            <span v-if="item.dtc_code" class="px-1.5 py-0.5 rounded bg-blue-950 text-blue-400 font-mono text-[11px] border border-blue-900">
               {{ item.dtc_code }}
             </span>
-            <span v-if="item.symptoms" class="ml-2 text-slate-400 italic truncate max-w-[200px] inline-block align-bottom">
+            <span v-if="item.symptoms" class="text-slate-400 italic truncate max-w-[180px] inline-block align-bottom">
               {{ item.symptoms }}
             </span>
           </div>
@@ -345,6 +358,7 @@
         const form = ref({ vehicle: '', dtc_code: '', symptoms: '' });
         const activeVehicle = ref('');
         const activeDtc = ref('');
+        const activeImage = ref(null);
         const loading = ref(false);
         const exportingPdf = ref(false);
         const report = ref('');
@@ -353,13 +367,11 @@
         const history = ref([]);
         const deferredPrompt = ref(null);
         
-        // Gravité & Checklist
         const severityLevel = ref('ORANGE');
         const severityLabel = ref('');
         const severityAdvice = ref('');
         const checklist = ref([]);
 
-        // Photo
         const imageBase64 = ref(null);
         const imagePreview = ref(null);
 
@@ -471,6 +483,7 @@
           copied.value = false;
           activeVehicle.value = form.value.vehicle;
           activeDtc.value = form.value.dtc_code;
+          activeImage.value = imageBase64.value;
 
           try {
             const payload = {
@@ -502,6 +515,7 @@
               vehicle: form.value.vehicle,
               dtc_code: form.value.dtc_code,
               symptoms: form.value.symptoms,
+              image: activeImage.value,
               report: data.report,
               severity_level: severityLevel.value,
               severity_label: severityLabel.value,
@@ -510,7 +524,11 @@
               date: new Date().toLocaleDateString('fr-FR', { hour: '2-digit', minute: '2-digit' })
             };
             history.value = [newEntry, ...history.value.filter(h => h.report !== data.report)].slice(0, 10);
-            localStorage.setItem('idiagauto_history', JSON.stringify(history.value));
+            try {
+              localStorage.setItem('idiagauto_history', JSON.stringify(history.value));
+            } catch (storageErr) {
+              console.warn('Quota LocalStorage dépassé avec images.');
+            }
 
           } catch (e) {
             error.value = e.message || 'Impossible de joindre le serveur API.';
@@ -542,19 +560,33 @@
           element.style.color = '#1e293b';
           element.style.background = '#ffffff';
 
+          let imageHtml = '';
+          if (activeImage.value) {
+            imageHtml = `
+              <div style="margin-bottom: 16px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; display: flex; align-items: center; gap: 12px; background: #f1f5f9;">
+                <img src="${activeImage.value}" style="height: 70px; border-radius: 4px; object-fit: cover;" />
+                <div style="font-size: 11px; color: #475569;">
+                  <strong style="color: #0f172a;">Élément photographié joint :</strong><br/>
+                  Pièce ou écran analysé par l'IA dans ce diagnostic.
+                </div>
+              </div>
+            `;
+          }
+
           element.innerHTML = `
-            <div style="border-bottom: 2px solid #2563eb; padding-bottom: 12px; margin-bottom: 20px;">
-              <h1 style="color: #2563eb; margin: 0; font-size: 22px;">iDiagAuto — Fiche Diagnostic Atelier</h1>
-              <p style="color: #64748b; margin: 4px 0 0 0; font-size: 12px;">Véhicule : <strong>${activeVehicle.value}</strong> | Date : ${new Date().toLocaleDateString('fr-FR')}</p>
+            <div style="border-bottom: 2px solid #2563eb; padding-bottom: 12px; margin-bottom: 16px;">
+              <h1 style="color: #2563eb; margin: 0; font-size: 20px;">iDiagAuto — Fiche Diagnostic Atelier</h1>
+              <p style="color: #64748b; margin: 4px 0 0 0; font-size: 11px;">Véhicule : <strong>${activeVehicle.value}</strong> | Date : ${new Date().toLocaleDateString('fr-FR')}</p>
             </div>
-            <div style="padding: 10px 14px; background: #f8fafc; border-left: 4px solid #2563eb; margin-bottom: 18px;">
-              <strong>Urgence : ${severityLabel.value}</strong><br/>
-              <span style="font-size: 12px; color: #475569;">${severityAdvice.value}</span>
+            <div style="padding: 8px 12px; background: #f8fafc; border-left: 4px solid #2563eb; margin-bottom: 14px;">
+              <strong style="font-size: 13px;">Urgence : ${severityLabel.value}</strong><br/>
+              <span style="font-size: 11px; color: #475569;">${severityAdvice.value}</span>
             </div>
-            <div style="font-size: 13px; line-height: 1.6;">
+            ${imageHtml}
+            <div style="font-size: 12px; line-height: 1.55;">
               ${marked.parse(report.value)}
             </div>
-            <div style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 8px; font-size: 10px; color: #94a3b8; text-align: center;">
+            <div style="margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 6px; font-size: 9px; color: #94a3b8; text-align: center;">
               Rapport généré par iDiagAuto — Document d'aide à la recherche de panne technique.
             </div>
           `;
@@ -578,6 +610,7 @@
           form.value.symptoms = item.symptoms || '';
           activeVehicle.value = item.vehicle;
           activeDtc.value = item.dtc_code || '';
+          activeImage.value = item.image || null;
           report.value = item.report;
           severityLevel.value = item.severity_level || 'ORANGE';
           severityLabel.value = item.severity_label || '';
@@ -595,6 +628,7 @@
           form, 
           activeVehicle, 
           activeDtc,
+          activeImage,
           loading, 
           exportingPdf,
           report, 
