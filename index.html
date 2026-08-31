@@ -30,9 +30,9 @@
     .report-content p { margin-bottom: 0.75rem; }
 
     @keyframes pulse-ring {
-      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-      70% { transform: scale(1); box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
-      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+      0% { transform: scale(0.98); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+      100% { transform: scale(0.98); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
     }
     .listening-pulse {
       animation: pulse-ring 1.5s infinite;
@@ -65,24 +65,28 @@
       </div>
     </header>
 
-    <!-- Zone Dictée Vocale Atelier -->
-    <div class="mb-6 p-4 rounded-xl bg-slate-800/60 border border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3">
-      <div class="text-left">
+    <!-- Zone Dictée Vocale Atelier Fiabilisée -->
+    <div class="mb-6 p-4 rounded-xl bg-slate-800/80 border border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+      <div class="text-left w-full sm:w-auto">
         <div class="flex items-center gap-2">
           <span class="text-base">🎙️</span>
           <span class="text-sm font-bold text-white">Mode Atelier « Mains libres »</span>
         </div>
-        <p class="text-xs text-slate-400 mt-0.5">
-          {{ isListening ? 'Écoute en cours... Dictez votre panne (ex: "Clio 3 code P0300 ratés à chaud")' : 'Gants ou mains sales ? Dictez directement votre diagnostic à la voix.' }}
+        <p class="text-xs text-slate-400 mt-0.5" v-if="!isListening">
+          Gants ou cambouis ? Appuie pour dicter véhicule, code et symptômes.
+        </p>
+        <p class="text-xs text-red-400 font-semibold mt-0.5 flex items-center gap-1.5" v-else>
+          <span class="inline-block w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+          Micro ouvert... Parle maintenant, puis réappuie pour valider.
         </p>
       </div>
 
       <button 
         @click="toggleSpeech"
-        :class="isListening ? 'bg-red-600 hover:bg-red-500 listening-pulse' : 'bg-indigo-600 hover:bg-indigo-500'"
-        class="w-full sm:w-auto px-4 py-2.5 rounded-lg text-white text-xs font-bold transition flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-md"
+        :class="isListening ? 'bg-red-600 hover:bg-red-500 listening-pulse text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white'"
+        class="w-full sm:w-auto px-5 py-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-md"
       >
-        <span>{{ isListening ? '⏹️ Arrêter' : '🎤 Dicter la panne' }}</span>
+        <span>{{ isListening ? '⏹️ Terminer la dictée' : '🎤 Activer le micro' }}</span>
       </button>
     </div>
 
@@ -186,7 +190,7 @@
         </div>
       </div>
 
-      <!-- Contenu capturé pour le PDF et l'écran -->
+      <!-- Contenu Markdown -->
       <div id="pdf-container" class="report-content text-sm text-slate-200 leading-relaxed" v-html="parsedReport"></div>
 
       <!-- Liens pièces détachées -->
@@ -318,9 +322,9 @@
         const history = ref([]);
         const deferredPrompt = ref(null);
         
-        // État reconnaissance vocale
         const isListening = ref(false);
         let recognition = null;
+        let accumulatedSpeech = '';
 
         const examples = [
           { vehicle: 'BMW 320i E36', dtc: 'P0340', symptoms: 'Manque de puissance, calage à chaud' },
@@ -342,65 +346,86 @@
           if (saved) {
             try { history.value = JSON.parse(saved); } catch (e) {}
           }
-
-          // Initialisation Web Speech API
-          const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-          if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
-            recognition.continuous = false;
-            recognition.lang = 'fr-FR';
-            recognition.interimResults = false;
-
-            recognition.onresult = (event) => {
-              const transcript = event.results[0][0].transcript;
-              parseVoiceInput(transcript);
-              isListening.value = false;
-            };
-
-            recognition.onerror = (event) => {
-              console.error('Erreur vocale :', event.error);
-              isListening.value = false;
-            };
-
-            recognition.onend = () => {
-              isListening.value = false;
-            };
-          }
         });
 
-        // Découpage intelligent de la phrase dictée
+        // Découpage automatique des propos dictés
         const parseVoiceInput = (text) => {
-          // Détection d'un code DTC (ex: P0340, DF120, C1234, U0100, etc.)
-          const dtcMatch = text.match(/\b([PBCUpbcu][0-9]{4}|DF[0-9]{3})\b/i);
+          if (!text) return;
+          const cleanText = text.trim();
+
+          // 1. Détection du code DTC (P0340, DF154, C0035, U0100...)
+          const dtcMatch = cleanText.match(/\b([PBCUpbcu][0-9]{4}|DF[0-9]{3})\b/i);
           if (dtcMatch) {
             form.value.dtc_code = dtcMatch[0].toUpperCase();
           }
 
-          // Si le véhicule est encore vide, on prend la première partie
+          // 2. Si le champ véhicule est vide, on prend la phrase entière ou le début
           if (!form.value.vehicle) {
-            form.value.vehicle = text.split(/code|défaut|dtc|symptôme/i)[0].trim();
+            form.value.vehicle = cleanText;
+          } else {
+            form.value.symptoms = cleanText;
           }
-
-          // Le reste est mis dans les symptômes
-          form.value.symptoms = text;
         };
 
-        const toggleSpeech = () => {
-          if (!recognition) {
-            alert("La reconnaissance vocale n'est pas supportée sur ce navigateur. Essaie sur Chrome ou Safari mobile.");
+        const toggleSpeech = async () => {
+          const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+          if (!SpeechRecognition) {
+            alert("La reconnaissance vocale n'est pas supportée sur ce navigateur. Utilise Google Chrome ou Safari.");
             return;
           }
 
           if (isListening.value) {
-            recognition.stop();
+            if (recognition) recognition.stop();
             isListening.value = false;
-          } else {
-            try {
-              recognition.start();
-              isListening.value = true;
-            } catch (err) {
-              console.error(err);
+            return;
+          }
+
+          try {
+            // Forcer la demande d'accès micro si nécessaire
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+              await navigator.mediaDevices.getUserMedia({ audio: true });
             }
+
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'fr-FR';
+            accumulatedSpeech = '';
+
+            recognition.onstart = () => {
+              isListening.value = true;
+            };
+
+            recognition.onresult = (event) => {
+              let currentTranscript = '';
+              for (let i = 0; i < event.results.length; ++i) {
+                currentTranscript += event.results[i][0].transcript + ' ';
+              }
+              accumulatedSpeech = currentTranscript;
+              parseVoiceInput(accumulatedSpeech);
+            };
+
+            recognition.onerror = (event) => {
+              console.warn('Speech error:', event.error);
+              if (event.error !== 'no-speech') {
+                isListening.value = false;
+              }
+            };
+
+            recognition.onend = () => {
+              // Si l'utilisateur n'a pas cliqué sur Arrêter, on finalise proprement
+              isListening.value = false;
+              if (accumulatedSpeech) {
+                parseVoiceInput(accumulatedSpeech);
+              }
+            };
+
+            recognition.start();
+
+          } catch (err) {
+            console.error('Erreur micro :', err);
+            alert("Veuillez autoriser l'accès au microphone dans les paramètres de votre navigateur.");
+            isListening.value = false;
           }
         };
 
