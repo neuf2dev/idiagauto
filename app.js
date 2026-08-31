@@ -21,12 +21,11 @@ createApp({
     const imageBase64 = ref(null);
     const imagePreview = ref(null);
 
-    // États Dictée Vocale Continue
+    // États Dictée Vocale
     const isRecordingVehicle = ref(false);
     const isRecordingSymptoms = ref(false);
     let recognition = null;
     let activeVoiceTarget = null;
-    let isUserStopping = false;
     let baseText = '';
 
     const examples = [
@@ -49,97 +48,103 @@ createApp({
       if (saved) {
         try { history.value = JSON.parse(saved); } catch (e) {}
       }
-
-      // Initialisation Web Speech API en mode continu
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        recognition = new SpeechRecognition();
-        recognition.lang = 'fr-FR';
-        recognition.continuous = true;
-        recognition.interimResults = true;
-
-        recognition.onresult = (event) => {
-          let interimTranscript = '';
-          let finalTranscript = '';
-
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-              finalTranscript += event.results[i][0].transcript + ' ';
-            } else {
-              interimTranscript += event.results[i][0].transcript;
-            }
-          }
-
-          if (finalTranscript) {
-            baseText = (baseText ? baseText.trim() + ' ' : '') + finalTranscript.trim();
-          }
-
-          const currentText = (baseText ? baseText.trim() + ' ' : '') + interimTranscript;
-
-          if (activeVoiceTarget === 'vehicle') {
-            form.value.vehicle = currentText.trimStart();
-          } else if (activeVoiceTarget === 'symptoms') {
-            form.value.symptoms = currentText.trimStart();
-          }
-        };
-
-        recognition.onerror = (e) => {
-          if (e.error !== 'no-speech') {
-            console.warn('Erreur micro :', e.error);
-          }
-        };
-
-        // Relance automatique si le navigateur coupe après un silence sans intervention utilisateur
-        recognition.onend = () => {
-          if (!isUserStopping && (isRecordingVehicle.value || isRecordingSymptoms.value)) {
-            try {
-              recognition.start();
-            } catch (err) {
-              console.warn('Relance micro impossible', err);
-            }
-          } else {
-            stopAllVoice();
-          }
-        };
-      }
     });
 
-    const toggleVoiceInput = (target) => {
+    const toggleVoiceInput = async (target) => {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
-        alert("La reconnaissance vocale n'est pas supportée sur ce navigateur. Essaie sur Chrome ou Safari mobile.");
+        alert("La reconnaissance vocale n'est pas disponible sur ce navigateur. Utilise Google Chrome sur PC/Android ou Safari sur iPhone.");
         return;
       }
 
+      // Si déjà en cours d'écoute sur ce champ, on coupe
       if ((target === 'vehicle' && isRecordingVehicle.value) || (target === 'symptoms' && isRecordingSymptoms.value)) {
         stopAllVoice();
         return;
       }
 
       stopAllVoice();
-      isUserStopping = false;
+
+      // Vérification explicite de l'autorisation micro
+      try {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          // Libération immédiate du flux brut pour laisser SpeechRecognition gérer le micro
+          stream.getTracks().forEach(track => track.stop());
+        }
+      } catch (micErr) {
+        alert("Accès au micro refusé. Clique sur le cadenas (ou l'icône de paramètres) dans la barre d'adresse de ton navigateur pour autoriser le microphone.");
+        return;
+      }
+
       activeVoiceTarget = target;
       baseText = (target === 'vehicle' ? form.value.vehicle : form.value.symptoms) || '';
 
-      if (target === 'vehicle') isRecordingVehicle.value = true;
-      if (target === 'symptoms') isRecordingSymptoms.value = true;
+      recognition = new SpeechRecognition();
+      recognition.lang = 'fr-FR';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        if (target === 'vehicle') isRecordingVehicle.value = true;
+        if (target === 'symptoms') isRecordingSymptoms.value = true;
+      };
+
+      recognition.onresult = (event) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript + ' ';
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+
+        if (finalTranscript) {
+          baseText = (baseText ? baseText.trim() + ' ' : '') + finalTranscript.trim();
+        }
+
+        const currentText = (baseText ? baseText.trim() + ' ' : '') + interimTranscript;
+
+        if (activeVoiceTarget === 'vehicle') {
+          form.value.vehicle = currentText.trimStart();
+        } else if (activeVoiceTarget === 'symptoms') {
+          form.value.symptoms = currentText.trimStart();
+        }
+      };
+
+      recognition.onerror = (e) => {
+        console.warn('Erreur SpeechRecognition :', e.error);
+        if (e.error === 'not-allowed') {
+          alert("L'autorisation micro a été bloquée. Autorise le micro dans les réglages du site.");
+        }
+        stopAllVoice();
+      };
+
+      recognition.onend = () => {
+        // Ne réinitialiser l'état visuel que si l'écoute est réellement terminée
+        stopAllVoice();
+      };
 
       try {
         recognition.start();
       } catch (err) {
-        console.warn('Micro déjà démarré', err);
+        console.warn('Impossible de lancer la reconnaissance vocale :', err);
+        stopAllVoice();
       }
     };
 
     const stopAllVoice = () => {
-      isUserStopping = true;
       isRecordingVehicle.value = false;
       isRecordingSymptoms.value = false;
       activeVoiceTarget = null;
       if (recognition) {
         try {
-          recognition.stop();
+          recognition.abort();
         } catch (e) {}
+        recognition = null;
       }
     };
 
