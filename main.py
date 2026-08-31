@@ -5,12 +5,12 @@ import base64
 from typing import Optional, List
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from google import genai
 from google.genai import types
 from PIL import Image
 
-app = FastAPI(title="iDiagAuto API", version="1.3.0")
+app = FastAPI(title="iDiagAuto API", version="1.3.1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -32,21 +32,17 @@ class DiagnosticRequest(BaseModel):
     symptoms: Optional[str] = ""
     image_base64: Optional[str] = None
 
-SYSTEM_INSTRUCTION = """
-Tu es iDiagAuto, un maître-mécanicien expert et formateur d'atelier automobile.
-Tu analyses les pannes et codes DTC. Tu dois OBLIGATOIREMENT répondre sous forme d'un objet JSON strict valide sans texte avant ni après, avec la structure suivante :
+class DiagnosticResponseSchema(BaseModel):
+    severity_level: str = Field(description="'RED', 'ORANGE', ou 'GREEN'")
+    severity_label: str = Field(description="Ex: Arrêt immédiat, Roulage dégradé, Roulage possible")
+    severity_advice: str = Field(description="Conseil court sur la conduite et les risques")
+    checklist: List[str] = Field(description="Liste des 3 à 5 contrôles d'atelier prioritaires à réaliser")
+    report_markdown: str = Field(description="Rapport technique complet formaté en Markdown")
 
-{
-  "severity_level": "RED" | "ORANGE" | "GREEN",
-  "severity_label": "Arrêt immédiat" | "Roulage dégradé / Atelier rapide" | "Roulage possible / Défaut mineur",
-  "severity_advice": "Phrase courte expliquant le danger mécanique ou la sécurité routière.",
-  "checklist": [
-    "Contrôler la tension batterie (doit être > 12.4V au repos)",
-    "Mesurer la continuité et la masse sur le faisceau...",
-    "Vérifier l'état mécanique / visuel de..."
-  ],
-  "report_markdown": "Le rapport technique complet et détaillé en Markdown avec sections : Analyse technique, Causes probables, Protocole multimètre détaillé, Pièces à suspecter."
-}
+SYSTEM_INSTRUCTION = """
+Tu es iDiagAuto, maître-mécanicien expert et formateur d'atelier.
+Tu analyses méthodiquement les pannes et codes DTC pour fournir un rapport technique d'atelier complet.
+Dans 'report_markdown', inclus : Analyse technique, Causes probables, Protocole de contrôle électrique/mécanique détaillé, et Pièces suspectes.
 """
 
 @app.post("/api/diagnose")
@@ -72,9 +68,9 @@ async def diagnose(req: DiagnosticRequest):
             image_bytes = base64.b64decode(img_data)
             img = Image.open(io.BytesIO(image_bytes))
             contents.append(img)
-            user_prompt += "\nUne photo est fournie. Analyse-la précisément dans le rapport."
+            user_prompt += "\nUne photo technique est fournie. Analyse-la en détail."
         except Exception as img_err:
-            print(f"Erreur image : {img_err}")
+            print(f"Erreur décodage image : {img_err}")
 
     contents.append(user_prompt)
 
@@ -85,22 +81,28 @@ async def diagnose(req: DiagnosticRequest):
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_INSTRUCTION,
                 temperature=0.2,
-                response_mime_type="application/json"
+                response_mime_type="application/json",
+                response_schema=DiagnosticResponseSchema,
             )
         )
-        data = json.loads(response.text)
+
+        clean_text = response.text.strip()
+        if clean_text.startswith("```"):
+            clean_text = clean_text.split("\n", 1)[1].rsplit("\n", 1)[0].strip()
+
+        data = json.loads(clean_text)
         return {
             "vehicle": req.vehicle,
             "dtc_code": req.dtc_code,
             "severity_level": data.get("severity_level", "ORANGE"),
-            "severity_label": data.get("severity_label", "Roulage avec précaution"),
-            "severity_advice": data.get("severity_advice", "Effectuer les contrôles avant long trajet."),
+            "severity_label": data.get("severity_label", "Roulage sous surveillance"),
+            "severity_advice": data.get("severity_advice", "Effectuer les contrôles d'atelier rapidement."),
             "checklist": data.get("checklist", []),
-            "report": data.get("report_markdown", response.text)
+            "report": data.get("report_markdown", "")
         }
     except Exception as e:
-        print(f"Erreur Gemini : {e}")
-        raise HTTPException(status_code=500, detail="Erreur lors de l'analyse IA.")
+        print(f"Erreur détaillée : {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur lors de l'analyse IA : {str(e)}")
 
 @app.get("/")
 def health():
