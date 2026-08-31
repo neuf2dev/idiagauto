@@ -28,6 +28,15 @@
     .report-content ol { list-style-type: decimal; padding-left: 1.25rem; margin: 0.75rem 0; color: #cbd5e1; }
     .report-content li { margin-bottom: 0.4rem; }
     .report-content p { margin-bottom: 0.75rem; }
+
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    .listening-pulse {
+      animation: pulse-ring 1.5s infinite;
+    }
   </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen">
@@ -45,7 +54,7 @@
         Analyse de codes DTC et aide à la recherche de panne pas-à-pas
       </p>
 
-      <!-- Bouton d'installation toujours accessible pour le bouche-à-oreille -->
+      <!-- Bouton d'installation PWA -->
       <div class="mt-4">
         <button 
           @click="installPwa"
@@ -55,6 +64,27 @@
         </button>
       </div>
     </header>
+
+    <!-- Zone Dictée Vocale Atelier -->
+    <div class="mb-6 p-4 rounded-xl bg-slate-800/60 border border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="text-left">
+        <div class="flex items-center gap-2">
+          <span class="text-base">🎙️</span>
+          <span class="text-sm font-bold text-white">Mode Atelier « Mains libres »</span>
+        </div>
+        <p class="text-xs text-slate-400 mt-0.5">
+          {{ isListening ? 'Écoute en cours... Dictez votre panne (ex: "Clio 3 code P0300 ratés à chaud")' : 'Gants ou mains sales ? Dictez directement votre diagnostic à la voix.' }}
+        </p>
+      </div>
+
+      <button 
+        @click="toggleSpeech"
+        :class="isListening ? 'bg-red-600 hover:bg-red-500 listening-pulse' : 'bg-indigo-600 hover:bg-indigo-500'"
+        class="w-full sm:w-auto px-4 py-2.5 rounded-lg text-white text-xs font-bold transition flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-md"
+      >
+        <span>{{ isListening ? '⏹️ Arrêter' : '🎤 Dicter la panne' }}</span>
+      </button>
+    </div>
 
     <!-- Raccourcis de tests rapides -->
     <div class="mb-4">
@@ -287,6 +317,10 @@
         const copied = ref(false);
         const history = ref([]);
         const deferredPrompt = ref(null);
+        
+        // État reconnaissance vocale
+        const isListening = ref(false);
+        let recognition = null;
 
         const examples = [
           { vehicle: 'BMW 320i E36', dtc: 'P0340', symptoms: 'Manque de puissance, calage à chaud' },
@@ -308,7 +342,67 @@
           if (saved) {
             try { history.value = JSON.parse(saved); } catch (e) {}
           }
+
+          // Initialisation Web Speech API
+          const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+          if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'fr-FR';
+            recognition.interimResults = false;
+
+            recognition.onresult = (event) => {
+              const transcript = event.results[0][0].transcript;
+              parseVoiceInput(transcript);
+              isListening.value = false;
+            };
+
+            recognition.onerror = (event) => {
+              console.error('Erreur vocale :', event.error);
+              isListening.value = false;
+            };
+
+            recognition.onend = () => {
+              isListening.value = false;
+            };
+          }
         });
+
+        // Découpage intelligent de la phrase dictée
+        const parseVoiceInput = (text) => {
+          // Détection d'un code DTC (ex: P0340, DF120, C1234, U0100, etc.)
+          const dtcMatch = text.match(/\b([PBCUpbcu][0-9]{4}|DF[0-9]{3})\b/i);
+          if (dtcMatch) {
+            form.value.dtc_code = dtcMatch[0].toUpperCase();
+          }
+
+          // Si le véhicule est encore vide, on prend la première partie
+          if (!form.value.vehicle) {
+            form.value.vehicle = text.split(/code|défaut|dtc|symptôme/i)[0].trim();
+          }
+
+          // Le reste est mis dans les symptômes
+          form.value.symptoms = text;
+        };
+
+        const toggleSpeech = () => {
+          if (!recognition) {
+            alert("La reconnaissance vocale n'est pas supportée sur ce navigateur. Essaie sur Chrome ou Safari mobile.");
+            return;
+          }
+
+          if (isListening.value) {
+            recognition.stop();
+            isListening.value = false;
+          } else {
+            try {
+              recognition.start();
+              isListening.value = true;
+            } catch (err) {
+              console.error(err);
+            }
+          }
+        };
 
         const installPwa = async () => {
           if (deferredPrompt.value) {
@@ -463,10 +557,12 @@
           history, 
           parsedReport, 
           examples,
+          isListening,
           oscaroLink,
           autodocLink,
           amazonPartsLink,
           installPwa,
+          toggleSpeech,
           fillExample,
           runDiagnostic, 
           copyReport, 
