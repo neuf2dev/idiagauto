@@ -10,7 +10,7 @@ from google import genai
 from google.genai import types
 from PIL import Image
 
-app = FastAPI(title="iDiagAuto API", version="1.3.1")
+app = FastAPI(title="iDiagAuto API", version="1.3.2")
 
 app.add_middleware(
     CORSMiddleware,
@@ -76,7 +76,7 @@ async def diagnose(req: DiagnosticRequest):
 
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.6-flash",
             contents=contents,
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_INSTRUCTION,
