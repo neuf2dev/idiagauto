@@ -17,6 +17,8 @@
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <!-- Marked.js pour le rendu Markdown -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- html2pdf.js pour l'export PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   
   <style>
     .report-content strong { color: #38bdf8; font-weight: 600; }
@@ -43,12 +45,13 @@
         Analyse de codes DTC et aide à la recherche de panne pas-à-pas
       </p>
 
-      <div v-if="deferredPrompt" class="mt-4">
+      <!-- Bouton d'installation toujours accessible pour le bouche-à-oreille -->
+      <div class="mt-4">
         <button 
           @click="installPwa"
-          class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow-md transition cursor-pointer"
+          class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow-lg hover:shadow-emerald-500/20 transition cursor-pointer"
         >
-          📱 Installer l'application sur le téléphone
+          <span>📲 Installer l'application sur ce téléphone</span>
         </button>
       </div>
     </header>
@@ -127,60 +130,72 @@
 
     <!-- Rapport de diagnostic -->
     <div v-if="report" class="bg-slate-800/90 border border-slate-700 rounded-xl p-6 shadow-xl mb-8 space-y-6">
-      <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 pb-3">
         <div>
           <h2 class="text-lg font-bold text-white">Rapport technique</h2>
           <span class="text-xs text-slate-400">{{ activeVehicle }}</span>
         </div>
         
-        <button 
-          @click="copyReport"
-          class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg transition border border-slate-600 cursor-pointer"
-        >
-          <span>{{ copied ? '✅ Copié !' : '📋 Copier le rapport' }}</span>
-        </button>
+        <div class="flex items-center gap-2">
+          <!-- Bouton Export PDF -->
+          <button 
+            @click="exportPdf"
+            :disabled="exportingPdf"
+            class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg transition border border-slate-600 cursor-pointer disabled:opacity-50"
+          >
+            <span>{{ exportingPdf ? '⏳ PDF...' : '📄 Télécharger PDF' }}</span>
+          </button>
+
+          <!-- Bouton Copier -->
+          <button 
+            @click="copyReport"
+            class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg transition border border-slate-600 cursor-pointer"
+          >
+            <span>{{ copied ? '✅ Copié !' : '📋 Copier' }}</span>
+          </button>
+        </div>
       </div>
 
-      <!-- Contenu Markdown parsé -->
-      <div class="report-content text-sm text-slate-200 leading-relaxed" v-html="parsedReport"></div>
+      <!-- Contenu capturé pour le PDF et l'écran -->
+      <div id="pdf-container" class="report-content text-sm text-slate-200 leading-relaxed" v-html="parsedReport"></div>
 
-      <!-- Bloc Affiliation 1 : Recherche de pièces compatibles -->
+      <!-- Liens pièces détachées -->
       <div class="mt-6 pt-5 border-t border-slate-700/80">
-        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
-          <span>🛒 Trouver les pièces pour votre véhicule</span>
+        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
+          🛒 Trouver les pièces pour ce véhicule
         </h3>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-medium">
           <a 
             :href="oscaroLink" 
             target="_blank" 
             rel="noopener noreferrer"
-            class="flex items-center justify-center gap-1.5 p-2.5 rounded-lg bg-slate-900 hover:bg-slate-700 border border-slate-700 text-slate-200 transition"
+            class="flex items-center justify-center p-2.5 rounded-lg bg-slate-900 hover:bg-slate-700 border border-slate-700 text-slate-200 transition text-center"
           >
-            <span>Chercher sur Oscaro ↗</span>
+            Oscaro ↗
           </a>
           <a 
             :href="autodocLink" 
             target="_blank" 
             rel="noopener noreferrer"
-            class="flex items-center justify-center gap-1.5 p-2.5 rounded-lg bg-slate-900 hover:bg-slate-700 border border-slate-700 text-slate-200 transition"
+            class="flex items-center justify-center p-2.5 rounded-lg bg-slate-900 hover:bg-slate-700 border border-slate-700 text-slate-200 transition text-center"
           >
-            <span>Chercher sur Auto-Doc ↗</span>
+            Auto-Doc ↗
           </a>
           <a 
             :href="amazonPartsLink" 
             target="_blank" 
             rel="noopener noreferrer"
-            class="flex items-center justify-center gap-1.5 p-2.5 rounded-lg bg-slate-900 hover:bg-slate-700 border border-slate-700 text-slate-200 transition"
+            class="flex items-center justify-center p-2.5 rounded-lg bg-slate-900 hover:bg-slate-700 border border-slate-700 text-slate-200 transition text-center"
           >
-            <span>Chercher sur Amazon ↗</span>
+            Amazon Pièces ↗
           </a>
         </div>
       </div>
 
-      <!-- Bloc Affiliation 2 : Outillage de contrôle recommandé -->
+      <!-- Outillage recommandé -->
       <div class="mt-4 pt-4 border-t border-slate-700/60">
-        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
-          <span>🧰 Outillage recommandé pour les tests</span>
+        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
+          🧰 Outillage recommandé pour les contrôles
         </h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
           <a 
@@ -191,8 +206,8 @@
           >
             <span class="text-xl">⚡</span>
             <div>
-              <p class="font-semibold text-slate-200">Multimètre automobile numérique</p>
-              <p class="text-[11px] text-slate-400">Pour tests de tension, masse et continuité</p>
+              <p class="font-semibold text-slate-200">Multimètre automobile</p>
+              <p class="text-[11px] text-slate-400">Contrôle tension, masse et continuité</p>
             </div>
           </a>
           <a 
@@ -203,14 +218,14 @@
           >
             <span class="text-xl">📟</span>
             <div>
-              <p class="font-semibold text-slate-200">Scanner OBD-II multimarque</p>
-              <p class="text-[11px] text-slate-400">Lecture en direct des capteurs et effacement DTC</p>
+              <p class="font-semibold text-slate-200">Scanner OBD-II</p>
+              <p class="text-[11px] text-slate-400">Lecture des flux en direct et effacement</p>
             </div>
           </a>
         </div>
       </div>
 
-      <!-- Encart de soutien -->
+      <!-- Encart café -->
       <div class="mt-6 pt-6 border-t border-slate-700/80 bg-slate-900/60 -mx-6 -mb-6 p-6 rounded-b-xl flex flex-col sm:flex-row items-center justify-between gap-4">
         <div class="text-xs text-slate-400 text-center sm:text-left">
           <p class="font-semibold text-slate-200">Ce diagnostic t'a fait gagner du temps ?</p>
@@ -226,7 +241,7 @@
       </div>
     </div>
 
-    <!-- Historique des diagnostics (LocalStorage) -->
+    <!-- Historique -->
     <div v-if="history.length > 0" class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider">Historique récent</h3>
@@ -266,6 +281,7 @@
         const activeVehicle = ref('');
         const activeDtc = ref('');
         const loading = ref(false);
+        const exportingPdf = ref(false);
         const report = ref('');
         const error = ref('');
         const copied = ref(false);
@@ -282,10 +298,12 @@
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').catch(console.error);
           }
+
           window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt.value = e;
           });
+
           const saved = localStorage.getItem('idiagauto_history');
           if (saved) {
             try { history.value = JSON.parse(saved); } catch (e) {}
@@ -293,11 +311,14 @@
         });
 
         const installPwa = async () => {
-          if (!deferredPrompt.value) return;
-          deferredPrompt.value.prompt();
-          const { outcome } = await deferredPrompt.value.userChoice;
-          if (outcome === 'accepted') {
-            deferredPrompt.value = null;
+          if (deferredPrompt.value) {
+            deferredPrompt.value.prompt();
+            const { outcome } = await deferredPrompt.value.userChoice;
+            if (outcome === 'accepted') {
+              deferredPrompt.value = null;
+            }
+          } else {
+            alert("Pour ajouter iDiagAuto sur ton téléphone :\n\n• Android (Chrome) : Appuie sur le menu ⋮ en haut à droite, puis sur « Ajouter à l'écran d'accueil ».\n\n• iPhone (Safari) : Appuie sur l'icône de partage ⎋ en bas, puis sur « Sur l'écran d'accueil ».");
           }
         };
 
@@ -311,7 +332,6 @@
           return report.value ? marked.parse(report.value) : '';
         });
 
-        // Liens d'affiliation dynamiques basés sur le véhicule testé
         const oscaroLink = computed(() => {
           const query = encodeURIComponent(`${activeVehicle.value} ${activeDtc.value}`.trim());
           return `https://www.oscaro.com/fr/search?q=${query}`;
@@ -380,6 +400,42 @@
           }
         };
 
+        const exportPdf = () => {
+          if (!report.value) return;
+          exportingPdf.value = true;
+
+          const element = document.createElement('div');
+          element.style.padding = '20px';
+          element.style.fontFamily = 'Helvetica, Arial, sans-serif';
+          element.style.color = '#1e293b';
+          element.style.background = '#ffffff';
+
+          element.innerHTML = `
+            <div style="border-bottom: 2px solid #2563eb; padding-bottom: 12px; margin-bottom: 20px;">
+              <h1 style="color: #2563eb; margin: 0; font-size: 22px;">iDiagAuto — Fiche Diagnostic Atelier</h1>
+              <p style="color: #64748b; margin: 4px 0 0 0; font-size: 12px;">Véhicule : <strong>${activeVehicle.value}</strong> | Date : ${new Date().toLocaleDateString('fr-FR')}</p>
+            </div>
+            <div style="font-size: 13px; line-height: 1.6;">
+              ${marked.parse(report.value)}
+            </div>
+            <div style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 8px; font-size: 10px; color: #94a3b8; text-align: center;">
+              Rapport généré par iDiagAuto — Document d'aide à la recherche de panne technique.
+            </div>
+          `;
+
+          const opt = {
+            margin: 10,
+            filename: `iDiagAuto_${activeVehicle.value.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+          };
+
+          html2pdf().set(opt).from(element).save().then(() => {
+            exportingPdf.value = false;
+          });
+        };
+
         const loadFromHistory = (item) => {
           form.value.vehicle = item.vehicle;
           form.value.dtc_code = item.dtc_code || '';
@@ -400,12 +456,12 @@
           activeVehicle, 
           activeDtc,
           loading, 
+          exportingPdf,
           report, 
           error, 
           copied, 
           history, 
           parsedReport, 
-          deferredPrompt,
           examples,
           oscaroLink,
           autodocLink,
@@ -414,6 +470,7 @@
           fillExample,
           runDiagnostic, 
           copyReport, 
+          exportPdf,
           loadFromHistory, 
           clearHistory 
         };
