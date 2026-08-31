@@ -21,11 +21,13 @@ createApp({
     const imageBase64 = ref(null);
     const imagePreview = ref(null);
 
-    // États Dictée Vocale
+    // États Dictée Vocale Continue
     const isRecordingVehicle = ref(false);
     const isRecordingSymptoms = ref(false);
     let recognition = null;
     let activeVoiceTarget = null;
+    let isUserStopping = false;
+    let baseText = '';
 
     const examples = [
       { vehicle: 'BMW 320i E36', dtc: 'P0340', symptoms: 'Manque de puissance, calage à chaud' },
@@ -48,30 +50,56 @@ createApp({
         try { history.value = JSON.parse(saved); } catch (e) {}
       }
 
-      // Initialisation Web Speech API
+      // Initialisation Web Speech API en mode continu
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
         recognition = new SpeechRecognition();
         recognition.lang = 'fr-FR';
-        recognition.continuous = false;
-        recognition.interimResults = false;
+        recognition.continuous = true;
+        recognition.interimResults = true;
 
         recognition.onresult = (event) => {
-          const transcript = event.results[0][0].transcript;
+          let interimTranscript = '';
+          let finalTranscript = '';
+
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              finalTranscript += event.results[i][0].transcript + ' ';
+            } else {
+              interimTranscript += event.results[i][0].transcript;
+            }
+          }
+
+          if (finalTranscript) {
+            baseText = (baseText ? baseText.trim() + ' ' : '') + finalTranscript.trim();
+          }
+
+          const currentText = (baseText ? baseText.trim() + ' ' : '') + interimTranscript;
+
           if (activeVoiceTarget === 'vehicle') {
-            form.value.vehicle = (form.value.vehicle ? form.value.vehicle + ' ' : '') + transcript;
+            form.value.vehicle = currentText.trimStart();
           } else if (activeVoiceTarget === 'symptoms') {
-            form.value.symptoms = (form.value.symptoms ? form.value.symptoms + ' ' : '') + transcript;
+            form.value.symptoms = currentText.trimStart();
           }
         };
 
         recognition.onerror = (e) => {
-          console.warn('Erreur reconnaissance vocale :', e.error);
-          stopAllVoice();
+          if (e.error !== 'no-speech') {
+            console.warn('Erreur micro :', e.error);
+          }
         };
 
+        // Relance automatique si le navigateur coupe après un silence sans intervention utilisateur
         recognition.onend = () => {
-          stopAllVoice();
+          if (!isUserStopping && (isRecordingVehicle.value || isRecordingSymptoms.value)) {
+            try {
+              recognition.start();
+            } catch (err) {
+              console.warn('Relance micro impossible', err);
+            }
+          } else {
+            stopAllVoice();
+          }
         };
       }
     });
@@ -84,13 +112,15 @@ createApp({
       }
 
       if ((target === 'vehicle' && isRecordingVehicle.value) || (target === 'symptoms' && isRecordingSymptoms.value)) {
-        recognition.stop();
         stopAllVoice();
         return;
       }
 
       stopAllVoice();
+      isUserStopping = false;
       activeVoiceTarget = target;
+      baseText = (target === 'vehicle' ? form.value.vehicle : form.value.symptoms) || '';
+
       if (target === 'vehicle') isRecordingVehicle.value = true;
       if (target === 'symptoms') isRecordingSymptoms.value = true;
 
@@ -102,9 +132,15 @@ createApp({
     };
 
     const stopAllVoice = () => {
+      isUserStopping = true;
       isRecordingVehicle.value = false;
       isRecordingSymptoms.value = false;
       activeVoiceTarget = null;
+      if (recognition) {
+        try {
+          recognition.stop();
+        } catch (e) {}
+      }
     };
 
     const severityClasses = computed(() => {
