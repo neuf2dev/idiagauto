@@ -21,6 +21,12 @@ createApp({
     const imageBase64 = ref(null);
     const imagePreview = ref(null);
 
+    // États Dictée Vocale
+    const isRecordingVehicle = ref(false);
+    const isRecordingSymptoms = ref(false);
+    let recognition = null;
+    let activeVoiceTarget = null;
+
     const examples = [
       { vehicle: 'BMW 320i E36', dtc: 'P0340', symptoms: 'Manque de puissance, calage à chaud' },
       { vehicle: 'Opel Meriva 1.7 CDTI', dtc: 'P0190', symptoms: 'Voyant moteur, à-coups à l\'accélération' },
@@ -41,7 +47,65 @@ createApp({
       if (saved) {
         try { history.value = JSON.parse(saved); } catch (e) {}
       }
+
+      // Initialisation Web Speech API
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.lang = 'fr-FR';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          if (activeVoiceTarget === 'vehicle') {
+            form.value.vehicle = (form.value.vehicle ? form.value.vehicle + ' ' : '') + transcript;
+          } else if (activeVoiceTarget === 'symptoms') {
+            form.value.symptoms = (form.value.symptoms ? form.value.symptoms + ' ' : '') + transcript;
+          }
+        };
+
+        recognition.onerror = (e) => {
+          console.warn('Erreur reconnaissance vocale :', e.error);
+          stopAllVoice();
+        };
+
+        recognition.onend = () => {
+          stopAllVoice();
+        };
+      }
     });
+
+    const toggleVoiceInput = (target) => {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("La reconnaissance vocale n'est pas supportée sur ce navigateur. Essaie sur Chrome ou Safari mobile.");
+        return;
+      }
+
+      if ((target === 'vehicle' && isRecordingVehicle.value) || (target === 'symptoms' && isRecordingSymptoms.value)) {
+        recognition.stop();
+        stopAllVoice();
+        return;
+      }
+
+      stopAllVoice();
+      activeVoiceTarget = target;
+      if (target === 'vehicle') isRecordingVehicle.value = true;
+      if (target === 'symptoms') isRecordingSymptoms.value = true;
+
+      try {
+        recognition.start();
+      } catch (err) {
+        console.warn('Micro déjà démarré', err);
+      }
+    };
+
+    const stopAllVoice = () => {
+      isRecordingVehicle.value = false;
+      isRecordingSymptoms.value = false;
+      activeVoiceTarget = null;
+    };
 
     const severityClasses = computed(() => {
       if (severityLevel.value === 'RED') return 'bg-red-950/80 border-red-800 text-red-200';
@@ -113,6 +177,7 @@ createApp({
     });
 
     const runDiagnostic = async () => {
+      stopAllVoice();
       loading.value = true;
       error.value = '';
       report.value = '';
@@ -232,6 +297,10 @@ createApp({
       progressPercent,
       imageBase64,
       imagePreview,
+      isRecordingVehicle,
+      isRecordingSymptoms,
+      toggleVoiceInput,
+      stopAllVoice,
       handleImageUpload,
       removeImage,
       oscaroLink,

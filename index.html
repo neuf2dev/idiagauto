@@ -63,13 +63,24 @@
           <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
             Véhicule *
           </label>
-          <input 
-            v-model="form.vehicle" 
-            type="text" 
-            required 
-            placeholder="Ex : BMW Série 3 E36 320i 1998, Opel Meriva 1.7 CDTI..." 
-            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-          />
+          <div class="relative flex items-center">
+            <input 
+              v-model="form.vehicle" 
+              type="text" 
+              required 
+              placeholder="Ex : BMW Série 3 E36 320i 1998, Opel Meriva 1.7 CDTI..." 
+              class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-4 pr-11 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+            />
+            <button 
+              type="button" 
+              @click="toggleVoiceInput('vehicle')"
+              :title="isRecordingVehicle ? 'Arrêter l\'écoute' : 'Dicter le véhicule'"
+              :class="isRecordingVehicle ? 'bg-red-600 text-white animate-pulse' : 'text-slate-400 hover:text-white hover:bg-slate-800'"
+              class="absolute right-1.5 p-1.5 rounded-md transition cursor-pointer"
+            >
+              <span class="text-sm">🎤</span>
+            </button>
+          </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -88,13 +99,35 @@
             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
               Symptômes observés
             </label>
-            <input 
-              v-model="form.symptoms" 
-              type="text" 
-              placeholder="Ex : Bruit à chaud, ratés, fumée, calage..." 
-              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-            />
+            <div class="relative flex items-center">
+              <input 
+                v-model="form.symptoms" 
+                type="text" 
+                placeholder="Ex : Bruit à chaud, ratés, calage..." 
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-4 pr-11 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              />
+              <button 
+                type="button" 
+                @click="toggleVoiceInput('symptoms')"
+                :title="isRecordingSymptoms ? 'Arrêter l\'écoute' : 'Dicter les symptômes'"
+                :class="isRecordingSymptoms ? 'bg-red-600 text-white animate-pulse' : 'text-slate-400 hover:text-white hover:bg-slate-800'"
+                class="absolute right-1.5 p-1.5 rounded-md transition cursor-pointer"
+              >
+                <span class="text-sm">🎤</span>
+              </button>
+            </div>
           </div>
+        </div>
+
+        <!-- Alerte dictée active -->
+        <div v-if="isRecordingVehicle || isRecordingSymptoms" class="p-2.5 bg-red-950/40 border border-red-850 rounded-lg flex items-center justify-between text-xs text-red-300">
+          <span class="flex items-center gap-2">
+            <span class="inline-block w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+            Dictée vocale en cours : parle distinctement...
+          </span>
+          <button type="button" @click="stopAllVoice" class="underline text-red-200 hover:text-white cursor-pointer">
+            Arrêter
+          </button>
         </div>
 
         <!-- Bloc Photo -->
