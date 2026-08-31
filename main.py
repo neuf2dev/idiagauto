@@ -1,13 +1,16 @@
 import os
+import io
+import json
+import base64
+from typing import Optional, List
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from google import genai
-from dotenv import load_dotenv
+from google.genai import types
+from PIL import Image
 
-load_dotenv()
-
-app = FastAPI(title="iDiagAuto API")
+app = FastAPI(title="iDiagAuto API", version="1.3.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -17,51 +20,88 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+API_KEY = os.getenv("GEMINI_API_KEY")
+if not API_KEY:
+    raise RuntimeError("La variable d'environnement GEMINI_API_KEY n'est pas configurée.")
 
-SYSTEM_PROMPT = """
-Tu es un mecanicien automobile expert et pedagogue. 
-Ton role est d'analyser un code defaut (DTC OBD-II) et/ou des symptomes decrits par l'utilisateur pour un vehicule donne.
-
-Fournis une reponse structuree, concise et technique selon ce plan exact :
-1. **Signification du code / Analyse rapide** : Explication claire en 1-2 phrases.
-2. **Causes les plus probables** : Liste a puces ordonnee par frequence constatee en atelier.
-3. **Protocole de controle pas-a-pas** :
-   - Controles visuels (faisceau, connecteurs, fuites).
-   - Mesures electriques recommandees (ex : multimetre, continuite, tension d'alimentation, resistance cible).
-4. **Pieces a suspecter** : Preciser de toujours tester avant de remplacer a l'aveugle.
-
-Reste factuel, rigoureux, sans jargon inutile, et adapte au modele precis mentionne.
-"""
+client = genai.Client(api_key=API_KEY)
 
 class DiagnosticRequest(BaseModel):
     vehicle: str
-    dtc_code: str = ""
-    symptoms: str = ""
+    dtc_code: Optional[str] = ""
+    symptoms: Optional[str] = ""
+    image_base64: Optional[str] = None
+
+SYSTEM_INSTRUCTION = """
+Tu es iDiagAuto, un maître-mécanicien expert et formateur d'atelier automobile.
+Tu analyses les pannes et codes DTC. Tu dois OBLIGATOIREMENT répondre sous forme d'un objet JSON strict valide sans texte avant ni après, avec la structure suivante :
+
+{
+  "severity_level": "RED" | "ORANGE" | "GREEN",
+  "severity_label": "Arrêt immédiat" | "Roulage dégradé / Atelier rapide" | "Roulage possible / Défaut mineur",
+  "severity_advice": "Phrase courte expliquant le danger mécanique ou la sécurité routière.",
+  "checklist": [
+    "Contrôler la tension batterie (doit être > 12.4V au repos)",
+    "Mesurer la continuité et la masse sur le faisceau...",
+    "Vérifier l'état mécanique / visuel de..."
+  ],
+  "report_markdown": "Le rapport technique complet et détaillé en Markdown avec sections : Analyse technique, Causes probables, Protocole multimètre détaillé, Pièces à suspecter."
+}
+"""
 
 @app.post("/api/diagnose")
-async def diagnose(request: DiagnosticRequest):
-    if not request.dtc_code and not request.symptoms:
-        raise HTTPException(
-            status_code=400, 
-            detail="Precise au moins un code defaut (DTC) ou des symptomes."
-        )
+async def diagnose(req: DiagnosticRequest):
+    if not req.vehicle.strip():
+        raise HTTPException(status_code=400, detail="Le modèle du véhicule est obligatoire.")
 
-    user_content = f"Vehicule : {request.vehicle}\n"
-    if request.dtc_code:
-        user_content += f"Code defaut OBD : {request.dtc_code}\n"
-    if request.symptoms:
-        user_content += f"Symptomes observes : {request.symptoms}\n"
+    user_prompt = f"Véhicule : {req.vehicle}\n"
+    if req.dtc_code:
+        user_prompt += f"Code défaut (DTC) : {req.dtc_code}\n"
+    if req.symptoms:
+        user_prompt += f"Symptômes : {req.symptoms}\n"
+
+    contents = []
+
+    if req.image_base64:
+        try:
+            if "," in req.image_base64:
+                img_data = req.image_base64.split(",")[1]
+            else:
+                img_data = req.image_base64
+            
+            image_bytes = base64.b64decode(img_data)
+            img = Image.open(io.BytesIO(image_bytes))
+            contents.append(img)
+            user_prompt += "\nUne photo est fournie. Analyse-la précisément dans le rapport."
+        except Exception as img_err:
+            print(f"Erreur image : {img_err}")
+
+    contents.append(user_prompt)
 
     try:
         response = client.models.generate_content(
-            model="gemini-3.6-flash",
-            contents=user_content,
-            config={
-                "system_instruction": SYSTEM_PROMPT,
-                "temperature": 0.3,
-            }
+            model="gemini-2.5-flash",
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_INSTRUCTION,
+                temperature=0.2,
+                response_mime_type="application/json"
+            )
         )
-        return {"report": response.text}
+        data = json.loads(response.text)
+        return {
+            "vehicle": req.vehicle,
+            "dtc_code": req.dtc_code,
+            "severity_level": data.get("severity_level", "ORANGE"),
+            "severity_label": data.get("severity_label", "Roulage avec précaution"),
+            "severity_advice": data.get("severity_advice", "Effectuer les contrôles avant long trajet."),
+            "checklist": data.get("checklist", []),
+            "report": data.get("report_markdown", response.text)
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Erreur Gemini : {e}")
+        raise HTTPException(status_code=500, detail="Erreur lors de l'analyse IA.")
+
+@app.get("/")
+def health():
+    return {"status": "ok", "app": "iDiagAuto API"}

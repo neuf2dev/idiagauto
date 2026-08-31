@@ -5,19 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>iDiagAuto - Assistant IA Diagnostic Mécanique</title>
   
-  <!-- Configuration PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2563eb">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Vue 3 CDN -->
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-  <!-- Marked.js pour le rendu Markdown -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <!-- html2pdf.js pour l'export PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   
   <style>
@@ -28,15 +23,7 @@
     .report-content ol { list-style-type: decimal; padding-left: 1.25rem; margin: 0.75rem 0; color: #cbd5e1; }
     .report-content li { margin-bottom: 0.4rem; }
     .report-content p { margin-bottom: 0.75rem; }
-
-    @keyframes pulse-ring {
-      0% { transform: scale(0.98); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-      70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-      100% { transform: scale(0.98); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-    }
-    .listening-pulse {
-      animation: pulse-ring 1.5s infinite;
-    }
+    .report-content h3 { color: #f8fafc; font-size: 1.05rem; font-weight: 700; margin-top: 1.25rem; margin-bottom: 0.5rem; border-bottom: 1px solid #334155; padding-bottom: 0.25rem; }
   </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen">
@@ -51,10 +38,9 @@
         iDiag<span class="text-blue-500">Auto</span>
       </h1>
       <p class="mt-2 text-sm text-slate-400">
-        Analyse de codes DTC et aide à la recherche de panne pas-à-pas
+        Analyse de codes DTC, photos de valise et recherche de panne pas-à-pas
       </p>
 
-      <!-- Bouton d'installation PWA -->
       <div class="mt-4">
         <button 
           @click="installPwa"
@@ -64,37 +50,6 @@
         </button>
       </div>
     </header>
-
-    <!-- Zone Dictée Vocale Atelier Simplifiée -->
-    <div class="mb-6 p-4 rounded-xl bg-slate-800/80 border border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
-      <div class="text-left w-full sm:w-auto">
-        <div class="flex items-center gap-2">
-          <span class="text-base">🎙️</span>
-          <span class="text-sm font-bold text-white">Mode Atelier « Mains libres »</span>
-        </div>
-        <p class="text-xs text-slate-400 mt-0.5" v-if="!isListening">
-          Gants ou cambouis ? Clique pour dicter directement véhicule et symptômes.
-        </p>
-        <p class="text-xs text-red-400 font-semibold mt-0.5 flex items-center gap-1.5" v-else>
-          <span class="inline-block w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-          Micro à l'écoute... Dicte ta panne puis réappuie pour valider.
-        </p>
-      </div>
-
-      <button 
-        @click="toggleSpeech"
-        :class="isListening ? 'bg-red-600 hover:bg-red-500 listening-pulse text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white'"
-        class="w-full sm:w-auto px-5 py-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-md"
-      >
-        <span>{{ isListening ? '⏹️ Terminer la dictée' : '🎤 Activer le micro' }}</span>
-      </button>
-    </div>
-
-    <!-- Message d'information / erreur micro -->
-    <div v-if="speechFeedback" class="mb-4 p-3 bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-300 flex items-center justify-between">
-      <span>{{ speechFeedback }}</span>
-      <button @click="speechFeedback = ''" class="text-slate-500 hover:text-slate-300 ml-2">✕</button>
-    </div>
 
     <!-- Raccourcis de tests rapides -->
     <div class="mb-4">
@@ -147,16 +102,42 @@
             <input 
               v-model="form.symptoms" 
               type="text" 
-              placeholder="Ex : Ralenti instable, calage..." 
+              placeholder="Ex : Bruit à chaud, ratés, fumée, calage..." 
               class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
             />
+          </div>
+        </div>
+
+        <!-- Bloc Photo -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+            Photo (Écran valise diag, bougie, fuite, courroie...) <span class="text-slate-500 lowercase font-normal">(optionnel)</span>
+          </label>
+          
+          <div class="flex items-center gap-3">
+            <label class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 border border-dashed border-slate-700 hover:border-blue-500 rounded-lg text-xs text-slate-300 cursor-pointer transition">
+              <span>📷 {{ imagePreview ? 'Changer la photo' : 'Prendre une photo ou importer' }}</span>
+              <input type="file" accept="image/*" @change="handleImageUpload" class="hidden" />
+            </label>
+            <button 
+              v-if="imagePreview" 
+              @click="removeImage" 
+              type="button" 
+              class="px-3 py-2.5 bg-red-950/60 border border-red-800 text-red-300 text-xs rounded-lg hover:bg-red-900/60 transition cursor-pointer"
+            >
+              Supprimer
+            </button>
+          </div>
+
+          <div v-if="imagePreview" class="mt-2.5 relative inline-block">
+            <img :src="imagePreview" alt="Aperçu photo" class="h-24 w-auto rounded-lg border border-slate-700 object-cover" />
           </div>
         </div>
 
         <button 
           type="submit" 
           :disabled="loading"
-          class="w-full mt-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold py-3 px-4 rounded-lg transition duration-150 ease-in-out flex items-center justify-center gap-2 cursor-pointer"
+          class="w-full mt-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold py-3 px-4 rounded-lg transition duration-150 ease-in-out flex items-center justify-center gap-2 cursor-pointer shadow-lg"
         >
           <span v-if="loading" class="animate-spin">⏳</span>
           <span>{{ loading ? 'Analyse technique en cours...' : 'Lancer le diagnostic' }}</span>
@@ -170,6 +151,20 @@
 
     <!-- Rapport de diagnostic -->
     <div v-if="report" class="bg-slate-800/90 border border-slate-700 rounded-xl p-6 shadow-xl mb-8 space-y-6">
+      
+      <!-- Jauge de Gravité Dynamique 🚦 -->
+      <div 
+        :class="severityClasses"
+        class="p-4 rounded-xl border flex items-start gap-3 shadow-md"
+      >
+        <span class="text-2xl">{{ severityIcon }}</span>
+        <div>
+          <h3 class="text-sm font-bold tracking-wide uppercase">{{ severityLabel }}</h3>
+          <p class="text-xs mt-0.5 opacity-90 leading-relaxed">{{ severityAdvice }}</p>
+        </div>
+      </div>
+
+      <!-- En-tête du Rapport -->
       <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 pb-3">
         <div>
           <h2 class="text-lg font-bold text-white">Rapport technique</h2>
@@ -177,7 +172,6 @@
         </div>
         
         <div class="flex items-center gap-2">
-          <!-- Bouton Export PDF -->
           <button 
             @click="exportPdf"
             :disabled="exportingPdf"
@@ -186,13 +180,44 @@
             <span>{{ exportingPdf ? '⏳ PDF...' : '📄 Télécharger PDF' }}</span>
           </button>
 
-          <!-- Bouton Copier -->
           <button 
             @click="copyReport"
             class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg transition border border-slate-600 cursor-pointer"
           >
             <span>{{ copied ? '✅ Copié !' : '📋 Copier' }}</span>
           </button>
+        </div>
+      </div>
+
+      <!-- Checklist Interactive d'Atelier ☑️ -->
+      <div v-if="checklist.length > 0" class="p-4 bg-slate-900/90 rounded-xl border border-slate-700/80">
+        <div class="flex items-center justify-between mb-2.5">
+          <h3 class="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span>☑️ Contrôles Atelier à effectuer</span>
+          </h3>
+          <span class="text-[11px] font-mono text-slate-400">{{ completedCount }}/{{ checklist.length }} validé(s)</span>
+        </div>
+
+        <!-- Barre de progression -->
+        <div class="w-full bg-slate-800 rounded-full h-1.5 mb-3 overflow-hidden">
+          <div class="bg-blue-500 h-1.5 transition-all duration-300" :style="{ width: progressPercent + '%' }"></div>
+        </div>
+
+        <div class="space-y-2">
+          <label 
+            v-for="(item, idx) in checklist" 
+            :key="idx"
+            class="flex items-start gap-2.5 p-2 rounded-lg bg-slate-800/60 hover:bg-slate-800 border border-slate-700/50 cursor-pointer transition text-xs"
+          >
+            <input 
+              type="checkbox" 
+              v-model="item.checked" 
+              class="mt-0.5 rounded border-slate-600 bg-slate-900 text-blue-600 focus:ring-0 focus:ring-offset-0" 
+            />
+            <span :class="{ 'line-through text-slate-500': item.checked, 'text-slate-200': !item.checked }">
+              {{ item.text }}
+            </span>
+          </label>
         </div>
       </div>
 
@@ -328,9 +353,15 @@
         const history = ref([]);
         const deferredPrompt = ref(null);
         
-        const isListening = ref(false);
-        const speechFeedback = ref('');
-        let recognition = null;
+        // Gravité & Checklist
+        const severityLevel = ref('ORANGE');
+        const severityLabel = ref('');
+        const severityAdvice = ref('');
+        const checklist = ref([]);
+
+        // Photo
+        const imageBase64 = ref(null);
+        const imagePreview = ref(null);
 
         const examples = [
           { vehicle: 'BMW 320i E36', dtc: 'P0340', symptoms: 'Manque de puissance, calage à chaud' },
@@ -354,76 +385,46 @@
           }
         });
 
-        const parseVoiceInput = (text) => {
-          if (!text) return;
-          const cleanText = text.trim();
-
-          const dtcMatch = cleanText.match(/\b([PBCUpbcu][0-9]{4}|DF[0-9]{3})\b/i);
-          if (dtcMatch) {
-            form.value.dtc_code = dtcMatch[0].toUpperCase();
+        const severityClasses = computed(() => {
+          if (severityLevel.value === 'RED') {
+            return 'bg-red-950/80 border-red-800 text-red-200';
           }
-
-          if (!form.value.vehicle) {
-            form.value.vehicle = cleanText;
-          } else {
-            form.value.symptoms = cleanText;
+          if (severityLevel.value === 'GREEN') {
+            return 'bg-emerald-950/80 border-emerald-800 text-emerald-200';
           }
+          return 'bg-amber-950/80 border-amber-800 text-amber-200';
+        });
+
+        const severityIcon = computed(() => {
+          if (severityLevel.value === 'RED') return '🔴';
+          if (severityLevel.value === 'GREEN') return '🟢';
+          return '🟡';
+        });
+
+        const completedCount = computed(() => {
+          return checklist.value.filter(c => c.checked).length;
+        });
+
+        const progressPercent = computed(() => {
+          if (checklist.value.length === 0) return 0;
+          return Math.round((completedCount.value / checklist.value.length) * 100);
+        });
+
+        const handleImageUpload = (event) => {
+          const file = event.target.files[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            imageBase64.value = e.target.result;
+            imagePreview.value = e.target.result;
+          };
+          reader.readAsDataURL(file);
         };
 
-        const toggleSpeech = () => {
-          const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-          if (!SpeechRecognition) {
-            speechFeedback.value = "Navigateur non compatible (utilise Google Chrome ou Safari).";
-            return;
-          }
-
-          if (isListening.value && recognition) {
-            recognition.stop();
-            isListening.value = false;
-            return;
-          }
-
-          try {
-            recognition = new SpeechRecognition();
-            recognition.lang = 'fr-FR';
-            recognition.interimResults = false;
-            recognition.continuous = false;
-
-            recognition.onstart = () => {
-              isListening.value = true;
-              speechFeedback.value = "🎙️ Parle maintenant...";
-            };
-
-            recognition.onresult = (event) => {
-              const transcript = event.results[0][0].transcript;
-              speechFeedback.value = `Compris : "${transcript}"`;
-              parseVoiceInput(transcript);
-            };
-
-            recognition.onerror = (event) => {
-              console.error('Speech error:', event.error);
-              if (event.error === 'not-allowed') {
-                speechFeedback.value = "Accès micro refusé. Autorise le micro dans les paramètres du navigateur.";
-              } else if (event.error === 'no-speech') {
-                speechFeedback.value = "Aucune parole détectée. Réessaie en parlant plus fort.";
-              } else {
-                speechFeedback.value = `Erreur micro : ${event.error}`;
-              }
-              isListening.value = false;
-            };
-
-            recognition.onend = () => {
-              isListening.value = false;
-            };
-
-            // Démarrage instantané et synchrone
-            recognition.start();
-
-          } catch (err) {
-            console.error('Erreur démarrage recognition :', err);
-            speechFeedback.value = "Impossible de lancer le micro : " + err.message;
-            isListening.value = false;
-          }
+        const removeImage = () => {
+          imageBase64.value = null;
+          imagePreview.value = null;
         };
 
         const installPwa = async () => {
@@ -472,10 +473,17 @@
           activeDtc.value = form.value.dtc_code;
 
           try {
+            const payload = {
+              vehicle: form.value.vehicle,
+              dtc_code: form.value.dtc_code,
+              symptoms: form.value.symptoms,
+              image_base64: imageBase64.value
+            };
+
             const response = await fetch('https://idiagauto.onrender.com/api/diagnose', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(form.value)
+              body: JSON.stringify(payload)
             });
 
             if (!response.ok) {
@@ -485,12 +493,20 @@
 
             const data = await response.json();
             report.value = data.report;
+            severityLevel.value = data.severity_level || 'ORANGE';
+            severityLabel.value = data.severity_label || 'Roulage sous surveillance';
+            severityAdvice.value = data.severity_advice || '';
+            checklist.value = (data.checklist || []).map(item => ({ text: item, checked: false }));
 
             const newEntry = {
               vehicle: form.value.vehicle,
               dtc_code: form.value.dtc_code,
               symptoms: form.value.symptoms,
               report: data.report,
+              severity_level: severityLevel.value,
+              severity_label: severityLabel.value,
+              severity_advice: severityAdvice.value,
+              checklist: checklist.value,
               date: new Date().toLocaleDateString('fr-FR', { hour: '2-digit', minute: '2-digit' })
             };
             history.value = [newEntry, ...history.value.filter(h => h.report !== data.report)].slice(0, 10);
@@ -507,7 +523,7 @@
           if (!report.value) return;
           try {
             await navigator.clipboard.writeText(
-              `=== Rapport iDiagAuto - ${activeVehicle.value} ===\n\n` + report.value
+              `=== Rapport iDiagAuto - ${activeVehicle.value} ===\n\n[${severityLabel.value}]\n${severityAdvice.value}\n\n` + report.value
             );
             copied.value = true;
             setTimeout(() => { copied.value = false; }, 2000);
@@ -530,6 +546,10 @@
             <div style="border-bottom: 2px solid #2563eb; padding-bottom: 12px; margin-bottom: 20px;">
               <h1 style="color: #2563eb; margin: 0; font-size: 22px;">iDiagAuto — Fiche Diagnostic Atelier</h1>
               <p style="color: #64748b; margin: 4px 0 0 0; font-size: 12px;">Véhicule : <strong>${activeVehicle.value}</strong> | Date : ${new Date().toLocaleDateString('fr-FR')}</p>
+            </div>
+            <div style="padding: 10px 14px; background: #f8fafc; border-left: 4px solid #2563eb; margin-bottom: 18px;">
+              <strong>Urgence : ${severityLabel.value}</strong><br/>
+              <span style="font-size: 12px; color: #475569;">${severityAdvice.value}</span>
             </div>
             <div style="font-size: 13px; line-height: 1.6;">
               ${marked.parse(report.value)}
@@ -559,6 +579,10 @@
           activeVehicle.value = item.vehicle;
           activeDtc.value = item.dtc_code || '';
           report.value = item.report;
+          severityLevel.value = item.severity_level || 'ORANGE';
+          severityLabel.value = item.severity_label || '';
+          severityAdvice.value = item.severity_advice || '';
+          checklist.value = item.checklist || [];
           window.scrollTo({ top: 0, behavior: 'smooth' });
         };
 
@@ -579,13 +603,22 @@
           history, 
           parsedReport, 
           examples,
-          isListening,
-          speechFeedback,
+          severityLevel,
+          severityLabel,
+          severityAdvice,
+          severityClasses,
+          severityIcon,
+          checklist,
+          completedCount,
+          progressPercent,
+          imageBase64,
+          imagePreview,
+          handleImageUpload,
+          removeImage,
           oscaroLink,
           autodocLink,
           amazonPartsLink,
           installPwa,
-          toggleSpeech,
           fillExample,
           runDiagnostic, 
           copyReport, 
