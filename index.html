@@ -65,7 +65,7 @@
       </div>
     </header>
 
-    <!-- Zone Dictée Vocale Atelier Fiabilisée -->
+    <!-- Zone Dictée Vocale Atelier Simplifiée -->
     <div class="mb-6 p-4 rounded-xl bg-slate-800/80 border border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
       <div class="text-left w-full sm:w-auto">
         <div class="flex items-center gap-2">
@@ -73,11 +73,11 @@
           <span class="text-sm font-bold text-white">Mode Atelier « Mains libres »</span>
         </div>
         <p class="text-xs text-slate-400 mt-0.5" v-if="!isListening">
-          Gants ou cambouis ? Appuie pour dicter véhicule, code et symptômes.
+          Gants ou cambouis ? Clique pour dicter directement véhicule et symptômes.
         </p>
         <p class="text-xs text-red-400 font-semibold mt-0.5 flex items-center gap-1.5" v-else>
           <span class="inline-block w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-          Micro ouvert... Parle maintenant, puis réappuie pour valider.
+          Micro à l'écoute... Dicte ta panne puis réappuie pour valider.
         </p>
       </div>
 
@@ -88,6 +88,12 @@
       >
         <span>{{ isListening ? '⏹️ Terminer la dictée' : '🎤 Activer le micro' }}</span>
       </button>
+    </div>
+
+    <!-- Message d'information / erreur micro -->
+    <div v-if="speechFeedback" class="mb-4 p-3 bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-300 flex items-center justify-between">
+      <span>{{ speechFeedback }}</span>
+      <button @click="speechFeedback = ''" class="text-slate-500 hover:text-slate-300 ml-2">✕</button>
     </div>
 
     <!-- Raccourcis de tests rapides -->
@@ -323,8 +329,8 @@
         const deferredPrompt = ref(null);
         
         const isListening = ref(false);
+        const speechFeedback = ref('');
         let recognition = null;
-        let accumulatedSpeech = '';
 
         const examples = [
           { vehicle: 'BMW 320i E36', dtc: 'P0340', symptoms: 'Manque de puissance, calage à chaud' },
@@ -348,18 +354,15 @@
           }
         });
 
-        // Découpage automatique des propos dictés
         const parseVoiceInput = (text) => {
           if (!text) return;
           const cleanText = text.trim();
 
-          // 1. Détection du code DTC (P0340, DF154, C0035, U0100...)
           const dtcMatch = cleanText.match(/\b([PBCUpbcu][0-9]{4}|DF[0-9]{3})\b/i);
           if (dtcMatch) {
             form.value.dtc_code = dtcMatch[0].toUpperCase();
           }
 
-          // 2. Si le champ véhicule est vide, on prend la phrase entière ou le début
           if (!form.value.vehicle) {
             form.value.vehicle = cleanText;
           } else {
@@ -367,64 +370,58 @@
           }
         };
 
-        const toggleSpeech = async () => {
+        const toggleSpeech = () => {
           const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
           if (!SpeechRecognition) {
-            alert("La reconnaissance vocale n'est pas supportée sur ce navigateur. Utilise Google Chrome ou Safari.");
+            speechFeedback.value = "Navigateur non compatible (utilise Google Chrome ou Safari).";
             return;
           }
 
-          if (isListening.value) {
-            if (recognition) recognition.stop();
+          if (isListening.value && recognition) {
+            recognition.stop();
             isListening.value = false;
             return;
           }
 
           try {
-            // Forcer la demande d'accès micro si nécessaire
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-              await navigator.mediaDevices.getUserMedia({ audio: true });
-            }
-
             recognition = new SpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = true;
             recognition.lang = 'fr-FR';
-            accumulatedSpeech = '';
+            recognition.interimResults = false;
+            recognition.continuous = false;
 
             recognition.onstart = () => {
               isListening.value = true;
+              speechFeedback.value = "🎙️ Parle maintenant...";
             };
 
             recognition.onresult = (event) => {
-              let currentTranscript = '';
-              for (let i = 0; i < event.results.length; ++i) {
-                currentTranscript += event.results[i][0].transcript + ' ';
-              }
-              accumulatedSpeech = currentTranscript;
-              parseVoiceInput(accumulatedSpeech);
+              const transcript = event.results[0][0].transcript;
+              speechFeedback.value = `Compris : "${transcript}"`;
+              parseVoiceInput(transcript);
             };
 
             recognition.onerror = (event) => {
-              console.warn('Speech error:', event.error);
-              if (event.error !== 'no-speech') {
-                isListening.value = false;
+              console.error('Speech error:', event.error);
+              if (event.error === 'not-allowed') {
+                speechFeedback.value = "Accès micro refusé. Autorise le micro dans les paramètres du navigateur.";
+              } else if (event.error === 'no-speech') {
+                speechFeedback.value = "Aucune parole détectée. Réessaie en parlant plus fort.";
+              } else {
+                speechFeedback.value = `Erreur micro : ${event.error}`;
               }
+              isListening.value = false;
             };
 
             recognition.onend = () => {
-              // Si l'utilisateur n'a pas cliqué sur Arrêter, on finalise proprement
               isListening.value = false;
-              if (accumulatedSpeech) {
-                parseVoiceInput(accumulatedSpeech);
-              }
             };
 
+            // Démarrage instantané et synchrone
             recognition.start();
 
           } catch (err) {
-            console.error('Erreur micro :', err);
-            alert("Veuillez autoriser l'accès au microphone dans les paramètres de votre navigateur.");
+            console.error('Erreur démarrage recognition :', err);
+            speechFeedback.value = "Impossible de lancer le micro : " + err.message;
             isListening.value = false;
           }
         };
@@ -583,6 +580,7 @@
           parsedReport, 
           examples,
           isListening,
+          speechFeedback,
           oscaroLink,
           autodocLink,
           amazonPartsLink,
