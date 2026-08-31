@@ -43,7 +43,6 @@
         Analyse de codes DTC et aide à la recherche de panne pas-à-pas
       </p>
 
-      <!-- Bouton Installer l'application (PWA) -->
       <div v-if="deferredPrompt" class="mt-4">
         <button 
           @click="installPwa"
@@ -134,7 +133,6 @@
           <span class="text-xs text-slate-400">{{ activeVehicle }}</span>
         </div>
         
-        <!-- Bouton Copier -->
         <button 
           @click="copyReport"
           class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg transition border border-slate-600 cursor-pointer"
@@ -146,8 +144,74 @@
       <!-- Contenu Markdown parsé -->
       <div class="report-content text-sm text-slate-200 leading-relaxed" v-html="parsedReport"></div>
 
+      <!-- Bloc Affiliation 1 : Recherche de pièces compatibles -->
+      <div class="mt-6 pt-5 border-t border-slate-700/80">
+        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+          <span>🛒 Trouver les pièces pour votre véhicule</span>
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-medium">
+          <a 
+            :href="oscaroLink" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            class="flex items-center justify-center gap-1.5 p-2.5 rounded-lg bg-slate-900 hover:bg-slate-700 border border-slate-700 text-slate-200 transition"
+          >
+            <span>Chercher sur Oscaro ↗</span>
+          </a>
+          <a 
+            :href="autodocLink" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            class="flex items-center justify-center gap-1.5 p-2.5 rounded-lg bg-slate-900 hover:bg-slate-700 border border-slate-700 text-slate-200 transition"
+          >
+            <span>Chercher sur Auto-Doc ↗</span>
+          </a>
+          <a 
+            :href="amazonPartsLink" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            class="flex items-center justify-center gap-1.5 p-2.5 rounded-lg bg-slate-900 hover:bg-slate-700 border border-slate-700 text-slate-200 transition"
+          >
+            <span>Chercher sur Amazon ↗</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Bloc Affiliation 2 : Outillage de contrôle recommandé -->
+      <div class="mt-4 pt-4 border-t border-slate-700/60">
+        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+          <span>🧰 Outillage recommandé pour les tests</span>
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <a 
+            href="https://www.amazon.fr/s?k=multimetre+automobile+numerique" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            class="flex items-center gap-3 p-3 rounded-lg bg-slate-900/90 hover:bg-slate-700/60 border border-slate-800 transition"
+          >
+            <span class="text-xl">⚡</span>
+            <div>
+              <p class="font-semibold text-slate-200">Multimètre automobile numérique</p>
+              <p class="text-[11px] text-slate-400">Pour tests de tension, masse et continuité</p>
+            </div>
+          </a>
+          <a 
+            href="https://www.amazon.fr/s?k=valise+diagnostic+auto+multimarque" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            class="flex items-center gap-3 p-3 rounded-lg bg-slate-900/90 hover:bg-slate-700/60 border border-slate-800 transition"
+          >
+            <span class="text-xl">📟</span>
+            <div>
+              <p class="font-semibold text-slate-200">Scanner OBD-II multimarque</p>
+              <p class="text-[11px] text-slate-400">Lecture en direct des capteurs et effacement DTC</p>
+            </div>
+          </a>
+        </div>
+      </div>
+
       <!-- Encart de soutien -->
-      <div class="mt-8 pt-6 border-t border-slate-700/80 bg-slate-900/60 -mx-6 -mb-6 p-6 rounded-b-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="mt-6 pt-6 border-t border-slate-700/80 bg-slate-900/60 -mx-6 -mb-6 p-6 rounded-b-xl flex flex-col sm:flex-row items-center justify-between gap-4">
         <div class="text-xs text-slate-400 text-center sm:text-left">
           <p class="font-semibold text-slate-200">Ce diagnostic t'a fait gagner du temps ?</p>
           <p>Soutiens l'hébergement et les requêtes IA pour garder l'outil gratuit.</p>
@@ -200,6 +264,7 @@
       setup() {
         const form = ref({ vehicle: '', dtc_code: '', symptoms: '' });
         const activeVehicle = ref('');
+        const activeDtc = ref('');
         const loading = ref(false);
         const report = ref('');
         const error = ref('');
@@ -214,18 +279,13 @@
         ];
 
         onMounted(() => {
-          // Enregistrement du service worker pour la PWA
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').catch(console.error);
           }
-
-          // Détection de l'événement d'installation PWA
           window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt.value = e;
           });
-
-          // Chargement de l'historique
           const saved = localStorage.getItem('idiagauto_history');
           if (saved) {
             try { history.value = JSON.parse(saved); } catch (e) {}
@@ -251,12 +311,29 @@
           return report.value ? marked.parse(report.value) : '';
         });
 
+        // Liens d'affiliation dynamiques basés sur le véhicule testé
+        const oscaroLink = computed(() => {
+          const query = encodeURIComponent(`${activeVehicle.value} ${activeDtc.value}`.trim());
+          return `https://www.oscaro.com/fr/search?q=${query}`;
+        });
+
+        const autodocLink = computed(() => {
+          const query = encodeURIComponent(`${activeVehicle.value} ${activeDtc.value}`.trim());
+          return `https://www.auto-doc.fr/search?keyword=${query}`;
+        });
+
+        const amazonPartsLink = computed(() => {
+          const query = encodeURIComponent(`piece auto ${activeVehicle.value} ${activeDtc.value}`.trim());
+          return `https://www.amazon.fr/s?k=${query}`;
+        });
+
         const runDiagnostic = async () => {
           loading.value = true;
           error.value = '';
           report.value = '';
           copied.value = false;
           activeVehicle.value = form.value.vehicle;
+          activeDtc.value = form.value.dtc_code;
 
           try {
             const response = await fetch('https://idiagauto.onrender.com/api/diagnose', {
@@ -308,6 +385,7 @@
           form.value.dtc_code = item.dtc_code || '';
           form.value.symptoms = item.symptoms || '';
           activeVehicle.value = item.vehicle;
+          activeDtc.value = item.dtc_code || '';
           report.value = item.report;
           window.scrollTo({ top: 0, behavior: 'smooth' });
         };
@@ -320,6 +398,7 @@
         return { 
           form, 
           activeVehicle, 
+          activeDtc,
           loading, 
           report, 
           error, 
@@ -328,6 +407,9 @@
           parsedReport, 
           deferredPrompt,
           examples,
+          oscaroLink,
+          autodocLink,
+          amazonPartsLink,
           installPwa,
           fillExample,
           runDiagnostic, 
