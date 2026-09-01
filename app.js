@@ -2,6 +2,9 @@ const { createApp, ref, computed, onMounted } = Vue;
 
 createApp({
   setup() {
+    const currentTab = ref('diag'); // 'diag' ou 'elec'
+
+    // Diagnostic form
     const form = ref({ vehicle: '', dtc_code: '', symptoms: '' });
     const activeVehicle = ref('');
     const activeDtc = ref('');
@@ -21,12 +24,11 @@ createApp({
     const imageBase64 = ref(null);
     const imagePreview = ref(null);
 
-    // États Dictée Vocale
-    const isRecordingVehicle = ref(false);
-    const isRecordingSymptoms = ref(false);
-    let recognition = null;
-    let activeVoiceTarget = null;
-    let baseText = '';
+    // Calculateur Électrique
+    const elec = ref({
+      component: 'battery_rest',
+      value: null
+    });
 
     const examples = [
       { vehicle: 'BMW 320i E36', dtc: 'P0340', symptoms: 'Manque de puissance, calage à chaud' },
@@ -50,90 +52,209 @@ createApp({
       }
     });
 
-    const toggleVoiceInput = (target) => {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        alert("La reconnaissance vocale n'est pas supportée sur ce navigateur. Utilise Google Chrome, Edge ou Safari mobile.");
-        return;
+    // Unités et placeholders pour le calculateur
+    const currentUnit = computed(() => {
+      if (elec.value.component.startsWith('battery') || elec.value.component === 'alternator') {
+        return 'Volts DC (V)';
       }
-
-      // Si le micro tourne déjà sur ce champ, on l'arrête
-      if ((target === 'vehicle' && isRecordingVehicle.value) || (target === 'symptoms' && isRecordingSymptoms.value)) {
-        stopAllVoice();
-        return;
+      if (elec.value.component === 'ignition_secondary') {
+        return 'kilo-Ohms (kΩ)';
       }
+      return 'Ohms (Ω)';
+    });
 
-      stopAllVoice();
+    const currentPlaceholder = computed(() => {
+      switch (elec.value.component) {
+        case 'battery_rest': return '12.6';
+        case 'battery_cranking': return '10.2';
+        case 'alternator': return '14.2';
+        case 'ignition_primary': return '0.8';
+        case 'ignition_secondary': return '8.5';
+        case 'injector': return '14.0';
+        case 'crank_sensor': return '650';
+        case 'temp_sensor': return '2500';
+        default: return '0';
+      }
+    });
 
-      activeVoiceTarget = target;
-      baseText = (target === 'vehicle' ? form.value.vehicle : form.value.symptoms) || '';
+    // Évaluation logique des mesures électriques
+    const elecResult = computed(() => {
+      const val = elec.value.value;
+      if (val === null || val === undefined || isNaN(val) || val === '') return null;
 
-      recognition = new SpeechRecognition();
-      recognition.lang = 'fr-FR';
-      recognition.continuous = true;
-      recognition.interimResults = true;
-
-      recognition.onstart = () => {
-        if (target === 'vehicle') isRecordingVehicle.value = true;
-        if (target === 'symptoms') isRecordingSymptoms.value = true;
-      };
-
-      recognition.onresult = (event) => {
-        let interimTranscript = '';
-        let finalTranscript = '';
-
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript + ' ';
+      switch (elec.value.component) {
+        case 'battery_rest':
+          if (val >= 12.6) {
+            return {
+              status: 'Batterie chargée à 100 %',
+              icon: '🟢',
+              range: '12,6 V à 12,8 V',
+              comment: 'Tension de repos parfaite. État de charge optimal.',
+              boxClass: 'bg-emerald-950/80 border-emerald-800 text-emerald-200'
+            };
+          } else if (val >= 12.2) {
+            return {
+              status: 'Batterie partiellement déchargée (50-75 %)',
+              icon: '🟡',
+              range: '12,6 V à 12,8 V',
+              comment: 'Recharge conseillée pour éviter la sulfatation des plaques.',
+              boxClass: 'bg-amber-950/80 border-amber-800 text-amber-200'
+            };
           } else {
-            interimTranscript += event.results[i][0].transcript;
+            return {
+              status: 'Batterie déchargée ou en fin de vie',
+              icon: '🔴',
+              range: '12,6 V à 12,8 V',
+              comment: 'Tension critique (< 12,0 V = décharge profonde). Tester les éléments et recharger.',
+              boxClass: 'bg-red-950/80 border-red-800 text-red-200'
+            };
           }
-        }
 
-        if (finalTranscript) {
-          baseText = (baseText ? baseText.trim() + ' ' : '') + finalTranscript.trim();
-        }
+        case 'battery_cranking':
+          if (val >= 9.6) {
+            return {
+              status: 'Chute de tension normale au démarrage',
+              icon: '🟢',
+              range: '≥ 9,6 V pendant l\'action du démarreur',
+              comment: 'La batterie délivre une intensité suffisante sous forte charge.',
+              boxClass: 'bg-emerald-950/80 border-emerald-800 text-emerald-200'
+            };
+          } else {
+            return {
+              status: 'Chute de tension excessive au démarrage',
+              icon: '🔴',
+              range: '≥ 9,6 V',
+              comment: 'Batterie affaiblie, démarreur en court-circuit ou mauvaise masse moteur.',
+              boxClass: 'bg-red-950/80 border-red-800 text-red-200'
+            };
+          }
 
-        const currentText = (baseText ? baseText.trim() + ' ' : '') + interimTranscript;
+        case 'alternator':
+          if (val >= 13.8 && val <= 14.7) {
+            return {
+              status: 'Circuit de charge conforme',
+              icon: '🟢',
+              range: '13,8 V à 14,7 V moteur tournant',
+              comment: 'Régulateur et alternateur fonctionnent parfaitement.',
+              boxClass: 'bg-emerald-950/80 border-emerald-800 text-emerald-200'
+            };
+          } else if (val < 13.8) {
+            return {
+              status: 'Sous-charge (Alternateur défaillant)',
+              icon: '🔴',
+              range: '13,8 V à 14,7 V',
+              comment: 'Courroie accessoire détendue, charbons/régulateur usés ou alternateur HS.',
+              boxClass: 'bg-red-950/80 border-red-800 text-red-200'
+            };
+          } else {
+            return {
+              status: 'Surtension critique (Régulateur HS)',
+              icon: '🔴',
+              range: '13,8 V à 14,7 V',
+              comment: 'Tension trop élevée (> 14,8 V) ! Risque de destruction des calculateurs et de la batterie.',
+              boxClass: 'bg-red-950/80 border-red-800 text-red-200'
+            };
+          }
 
-        if (activeVoiceTarget === 'vehicle') {
-          form.value.vehicle = currentText.trimStart();
-        } else if (activeVoiceTarget === 'symptoms') {
-          form.value.symptoms = currentText.trimStart();
-        }
-      };
+        case 'ignition_primary':
+          if (val >= 0.4 && val <= 1.5) {
+            return {
+              status: 'Enroulement primaire conforme',
+              icon: '🟢',
+              range: '0,4 Ω à 1,5 Ω',
+              comment: 'Résistance du circuit primaire de bobine dans les tolérances standard.',
+              boxClass: 'bg-emerald-950/80 border-emerald-800 text-emerald-200'
+            };
+          } else {
+            return {
+              status: 'Bobine non conforme (Primaire)',
+              icon: '🔴',
+              range: '0,4 Ω à 1,5 Ω',
+              comment: 'Résistance hors plage : court-circuit interne (si ~0 Ω) ou bobinage coupé (si infini / OL).',
+              boxClass: 'bg-red-950/80 border-red-800 text-red-200'
+            };
+          }
 
-      recognition.onerror = (e) => {
-        console.warn('Statut vocal :', e.error);
-        if (e.error === 'not-allowed') {
-          alert("Microphone bloqué. Vérifie les autorisations de ton navigateur ou les paramètres de confidentialité Windows.");
-        }
-        stopAllVoice();
-      };
+        case 'ignition_secondary':
+          if (val >= 5.0 && val <= 15.0) {
+            return {
+              status: 'Enroulement secondaire conforme',
+              icon: '🟢',
+              range: '5 kΩ à 15 kΩ (selon modèle)',
+              comment: 'Résistance haute tension normale.',
+              boxClass: 'bg-emerald-950/80 border-emerald-800 text-emerald-200'
+            };
+          } else {
+            return {
+              status: 'Secondaire haute tension défaillant',
+              icon: '🔴',
+              range: '5 kΩ à 15 kΩ',
+              comment: 'Bobinage HT coupé ou amorçage interne. Remplacement de bobine requis.',
+              boxClass: 'bg-red-950/80 border-red-800 text-red-200'
+            };
+          }
 
-      recognition.onend = () => {
-        stopAllVoice();
-      };
+        case 'injector':
+          if (val >= 11.0 && val <= 16.0) {
+            return {
+              status: 'Solénoïde d\'injecteur conforme',
+              icon: '🟢',
+              range: '11 Ω à 16 Ω (haute impédance)',
+              comment: 'Résistance normale pour un injecteur essence à commande indirecte.',
+              boxClass: 'bg-emerald-950/80 border-emerald-800 text-emerald-200'
+            };
+          } else {
+            return {
+              status: 'Injecteur hors tolérance',
+              icon: '🔴',
+              range: '11 Ω à 16 Ω',
+              comment: 'Bobinage d\'injecteur en court-circuit ou coupé.',
+              boxClass: 'bg-red-950/80 border-red-800 text-red-200'
+            };
+          }
 
-      try {
-        recognition.start();
-      } catch (err) {
-        console.warn('Erreur lancement micro :', err);
-        stopAllVoice();
+        case 'crank_sensor':
+          if (val >= 400 && val <= 1000) {
+            return {
+              status: 'Capteur PMH inductif conforme',
+              icon: '🟢',
+              range: '400 Ω à 1000 Ω (moteur froid)',
+              comment: 'Continuité et bobinage de détection de position corrects.',
+              boxClass: 'bg-emerald-950/80 border-emerald-800 text-emerald-200'
+            };
+          } else {
+            return {
+              status: 'Capteur PMH HS ou coupé',
+              icon: '🔴',
+              range: '400 Ω à 1000 Ω',
+              comment: 'Bobinage ouvert ou altéré par la chaleur (cause typique de calage ou non-démarrage à chaud).',
+              boxClass: 'bg-red-950/80 border-red-800 text-red-200'
+            };
+          }
+
+        case 'temp_sensor':
+          if (val >= 1800 && val <= 3200) {
+            return {
+              status: 'Sonde CTN conforme à température ambiante',
+              icon: '🟢',
+              range: '2000 Ω à 3000 Ω à ~20°C',
+              comment: 'Valeur normale pour capteur de température liquide de refroidissement ou air.',
+              boxClass: 'bg-emerald-950/80 border-emerald-800 text-emerald-200'
+            };
+          } else {
+            return {
+              status: 'Sonde de température hors tolérance',
+              icon: '🟡',
+              range: '2000 Ω à 3000 Ω à 20°C',
+              comment: 'Si mesurée à 20°C, la sonde dérive (fausse indication transmise au calculateur).',
+              boxClass: 'bg-amber-950/80 border-amber-800 text-amber-200'
+            };
+          }
+
+        default:
+          return null;
       }
-    };
-
-    const stopAllVoice = () => {
-      isRecordingVehicle.value = false;
-      isRecordingSymptoms.value = false;
-      activeVoiceTarget = null;
-      if (recognition) {
-        try {
-          recognition.stop();
-        } catch (e) {}
-        recognition = null;
-      }
-    };
+    });
 
     const severityClasses = computed(() => {
       if (severityLevel.value === 'RED') return 'bg-red-950/80 border-red-800 text-red-200';
@@ -205,7 +326,6 @@ createApp({
     });
 
     const runDiagnostic = async () => {
-      stopAllVoice();
       loading.value = true;
       error.value = '';
       report.value = '';
@@ -284,6 +404,7 @@ createApp({
     };
 
     const loadFromHistory = (item) => {
+      currentTab.value = 'diag';
       form.value.vehicle = item.vehicle;
       form.value.dtc_code = item.dtc_code || '';
       form.value.symptoms = item.symptoms || '';
@@ -304,6 +425,7 @@ createApp({
     };
 
     return {
+      currentTab,
       form,
       activeVehicle,
       activeDtc,
@@ -325,10 +447,10 @@ createApp({
       progressPercent,
       imageBase64,
       imagePreview,
-      isRecordingVehicle,
-      isRecordingSymptoms,
-      toggleVoiceInput,
-      stopAllVoice,
+      elec,
+      currentUnit,
+      currentPlaceholder,
+      elecResult,
       handleImageUpload,
       removeImage,
       oscaroLink,
