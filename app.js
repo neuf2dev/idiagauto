@@ -50,32 +50,20 @@ createApp({
       }
     });
 
-    const toggleVoiceInput = async (target) => {
+    const toggleVoiceInput = (target) => {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
-        alert("La reconnaissance vocale n'est pas disponible sur ce navigateur. Utilise Google Chrome sur PC/Android ou Safari sur iPhone.");
+        alert("La reconnaissance vocale n'est pas supportée sur ce navigateur. Utilise Google Chrome, Edge ou Safari mobile.");
         return;
       }
 
-      // Si déjà en cours d'écoute sur ce champ, on coupe
+      // Si le micro tourne déjà sur ce champ, on l'arrête
       if ((target === 'vehicle' && isRecordingVehicle.value) || (target === 'symptoms' && isRecordingSymptoms.value)) {
         stopAllVoice();
         return;
       }
 
       stopAllVoice();
-
-      // Vérification explicite de l'autorisation micro
-      try {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          // Libération immédiate du flux brut pour laisser SpeechRecognition gérer le micro
-          stream.getTracks().forEach(track => track.stop());
-        }
-      } catch (micErr) {
-        alert("Accès au micro refusé. Clique sur le cadenas (ou l'icône de paramètres) dans la barre d'adresse de ton navigateur pour autoriser le microphone.");
-        return;
-      }
 
       activeVoiceTarget = target;
       baseText = (target === 'vehicle' ? form.value.vehicle : form.value.symptoms) || '';
@@ -116,22 +104,21 @@ createApp({
       };
 
       recognition.onerror = (e) => {
-        console.warn('Erreur SpeechRecognition :', e.error);
+        console.warn('Statut vocal :', e.error);
         if (e.error === 'not-allowed') {
-          alert("L'autorisation micro a été bloquée. Autorise le micro dans les réglages du site.");
+          alert("Microphone bloqué. Vérifie les autorisations de ton navigateur ou les paramètres de confidentialité Windows.");
         }
         stopAllVoice();
       };
 
       recognition.onend = () => {
-        // Ne réinitialiser l'état visuel que si l'écoute est réellement terminée
         stopAllVoice();
       };
 
       try {
         recognition.start();
       } catch (err) {
-        console.warn('Impossible de lancer la reconnaissance vocale :', err);
+        console.warn('Erreur lancement micro :', err);
         stopAllVoice();
       }
     };
@@ -142,7 +129,7 @@ createApp({
       activeVoiceTarget = null;
       if (recognition) {
         try {
-          recognition.abort();
+          recognition.stop();
         } catch (e) {}
         recognition = null;
       }
