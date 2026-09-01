@@ -27,86 +27,27 @@ createApp({
     const elecComponent = ref('battery_rest');
     const elecValue = ref(null);
 
-    // Base de Données DTC Hors-Ligne
+    // Dictionnaire DTC hors-ligne
     const dtcSearchQuery = ref('');
-    const offlineDtcDatabase = [
-      {
-        code: 'P0300',
-        system: 'Allumage / Combustion',
-        title: 'Ratés d\'allumage cylindres multiples / aléatoires',
-        causes: 'Bougies d\'allumage usées/encrassées, bobines crayons défaillantes, prise d\'air importante à l\'admission, injecteurs colmatés, pression d\'essence trop basse.',
-        check: 'Démonter et inspecter les bougies. Mesurer la résistance primaire (0.4-1.5 Ω) et secondaire (5-15 kΩ) des bobines. Contrôler les durites de dépression avec du nettoyant frein/fumée.'
-      },
-      {
-        code: 'P0340',
-        system: 'Capteurs Moteur',
-        title: 'Capteur de position d\'arbre à cames (AAC) - Panne du circuit',
-        causes: 'Capteur à effet Hall/inductif HS, faisceau électrique pincé ou coupé, connecteur oxydé, décalage distribution mécanique.',
-        check: 'Contrôler l\'alimentation (+12V ou +5V) et la masse sur le faisceau. Mesurer la résistance si capteur inductif. Vérifier la tension du signal au multimètre.'
-      },
-      {
-        code: 'P0171',
-        system: 'Injection / Mélange',
-        title: 'Mélange trop pauvre (Ligne 1 - Trop d\'air ou manque d\'essence)',
-        causes: 'Prise d\'air après débitmètre (durite d\'admission fissurée), débitmètre MAF encrassé, filtre à carburant colmaté, pompe à essence fatiguée, régulateur de pression HS.',
-        check: 'Vérifier l\'étanchéité du collecteur et des soufflets en caoutchouc. Nettoyer le filament du débitmètre au nettoyant contact. Mesurer la pression d\'essence à la rampe.'
-      },
-      {
-        code: 'P0172',
-        system: 'Injection / Mélange',
-        title: 'Mélange trop riche (Ligne 1 - Trop de carburant ou manque d\'air)',
-        causes: 'Sonde lambda amont défaillante (bloquée en tension haute), injecteur qui fuit/goutte en continu, régulateur de pression d\'essence bloqué fermé, filtre à air colmaté.',
-        check: 'Mesurer le signal oscillant de la sonde lambda (0.1V à 0.9V). Vérifier le retour de dépression du régulateur (pas de présence de carburant dans la durite).'
-      },
-      {
-        code: 'P0420',
-        system: 'Dépollution',
-        title: 'Rendement du catalyseur inférieur au seuil (Ligne 1)',
-        causes: 'Catalyseur colmaté ou céramique fondue, fuite sur la ligne d\'échappement en amont du catalyseur, sonde lambda aval défectueuse.',
-        check: 'Contrôler l\'absence de fuite au collecteur/tresse d\'échappement. À chaud à 2500 tr/min, vérifier que la sonde aval reste stable (~0.45V) et ne recopie pas la sonde amont.'
-      },
-      {
-        code: 'P0190',
-        system: 'Injection Common Rail',
-        title: 'Capteur de pression de rampe d\'injection - Panne du circuit',
-        causes: 'Capteur de pression de rampe HS, câblage détérioré, connecteur oxydé, pompe haute pression désamorcée ou régulateur de pression grippé.',
-        check: 'Contrôler l\'alimentation 5V et la masse du connecteur. Mesurer la tension signal contact mis (~0.5V) et sous démarreur (doit monter à > 1.0V pour autoriser l\'injection).'
-      },
-      {
-        code: 'P0115',
-        system: 'Refroidissement',
-        title: 'Sonde de température liquide de refroidissement (ECT) - Panne du circuit',
-        causes: 'Sonde CTN coupée ou en court-circuit, thermostat d\'eau bloqué ouvert, câblage vers calculateur moteur détérioré.',
-        check: 'Mesurer la résistance de la sonde débranchée (2000-3000 Ω à 20°C, 200-300 Ω à 90°C). Vérifier la montée en température physique des durites de radiateur.'
-      },
-      {
-        code: 'P0401',
-        system: 'Dépollution EGR',
-        title: 'Système EGR - Débit de recirculation des gaz insuffisant',
-        causes: 'Vanne EGR calaminée et bloquée fermée, conduits d\'admission obstrués par la suie, tuyau de dépression percé (si commande pneumatique).',
-        check: 'Déposer la vanne EGR pour nettoyage mécanique au décapant four/nettoyant frein. Vérifier le déplacement libre du clapet.'
-      },
-      {
-        code: 'DF053',
-        system: 'Injection Renault/Dacia',
-        title: 'Fonction régulation de pression de rampe',
-        causes: 'Filtre à gazole colmaté, régulateur IMV/MPROP sur pompe HP encrassé, retour de fuite injecteur excessif.',
-        check: 'Effectuer un test de retour injecteurs avec 4 godets gradués sous démarreur. Vérifier l\'absence de limaille métallique dans le bocal de filtre à gazole.'
-      },
-      {
-        code: 'DF002',
-        system: 'Alimentation Renault/Dacia',
-        title: 'Circuit potentiomètre papillon / capteur position pédale',
-        causes: 'Pistes du capteur d\'accélérateur usées, faux contact sur la prise pédale, papillon motorisé encrassé.',
-        check: 'Mesurer la linéarité des tensions sur les deux pistes lors de l\'enfoncement de la pédale. Nettoyer les broches à la bombe contact.'
-      }
-    ];
+    const offlineDtcDatabase = ref([]);
 
     const examples = [
       { vehicle: 'BMW 320i E36', dtc: 'P0340', symptoms: 'Manque de puissance, calage à chaud' },
       { vehicle: 'Opel Meriva 1.7 CDTI', dtc: 'P0190', symptoms: 'Voyant moteur, à-coups à l\'accélération' },
       { vehicle: 'Renault Clio 3 1.5 dCi', dtc: 'DF053', symptoms: 'Démarrage difficile' }
     ];
+
+    // Chargement de la base JSON
+    const loadDtcDatabase = async () => {
+      try {
+        const res = await fetch('dtc_database.json');
+        if (res.ok) {
+          offlineDtcDatabase.value = await res.json();
+        }
+      } catch (err) {
+        console.warn('Chargement base locale via JSON...', err);
+      }
+    };
 
     onMounted(() => {
       if ('serviceWorker' in navigator) {
@@ -122,12 +63,14 @@ createApp({
       if (saved) {
         try { history.value = JSON.parse(saved); } catch (e) {}
       }
+
+      loadDtcDatabase();
     });
 
     const filteredDtcList = computed(() => {
       const q = dtcSearchQuery.value.trim().toLowerCase();
-      if (!q) return offlineDtcDatabase;
-      return offlineDtcDatabase.filter(item => 
+      if (!q) return offlineDtcDatabase.value;
+      return offlineDtcDatabase.value.filter(item => 
         item.code.toLowerCase().includes(q) ||
         item.title.toLowerCase().includes(q) ||
         item.causes.toLowerCase().includes(q) ||
@@ -423,9 +366,8 @@ createApp({
       activeDtc.value = (form.value.dtc_code || '').trim().toUpperCase();
       activeImage.value = imageBase64.value;
 
-      // Secours automatique si l'appareil est hors-ligne
       const cleanCode = activeDtc.value;
-      const matchedDtc = offlineDtcDatabase.find(d => d.code.toUpperCase() === cleanCode);
+      const matchedDtc = offlineDtcDatabase.value.find(d => d.code.toUpperCase() === cleanCode);
 
       try {
         const payload = {
@@ -454,26 +396,26 @@ createApp({
         checklist.value = (data.checklist || []).map(item => ({ text: item, checked: false }));
 
       } catch (e) {
-        // En cas de perte de réseau, bascule sur la base locale embarquée
+        // Secours automatique si réseau indisponible
         if (matchedDtc) {
           severityLevel.value = 'ORANGE';
-          severityLabel.value = `Fiche Locale Hors-Ligne : ${matchedDtc.code}`;
-          severityAdvice.value = 'Connexion Internet absente. Diagnostic généré depuis la base de secours locale.';
+          severityLabel.value = `Fiche Hors-Ligne : ${matchedDtc.code}`;
+          severityAdvice.value = 'Connexion Internet indisponible. Rapport issu de la base technique locale de secours.';
           
           checklist.value = [
-            { text: `Vérification du système ${matchedDtc.system}`, checked: false },
+            { text: `Contrôle du système : ${matchedDtc.system}`, checked: false },
             { text: matchedDtc.check, checked: false },
             { text: 'Contrôle visuel des connecteurs et faisceaux associés', checked: false }
           ];
 
-          report.value = `### 📋 Fiche Technique Hors-Ligne — ${matchedDtc.code}\n\n` +
+          report.value = `### 📋 Fiche Technique Atelier Hors-Ligne — ${matchedDtc.code}\n\n` +
             `**Système concerné :** ${matchedDtc.system}\n\n` +
-            `**Description :** ${matchedDtc.title}\n\n` +
+            `**Description du défaut :** ${matchedDtc.title}\n\n` +
             `**Causes probables identifiées :**\n${matchedDtc.causes}\n\n` +
             `**Méthodologie de contrôle atelier recommandée :**\n${matchedDtc.check}\n\n` +
-            `*(💡 Note atelier : Reconnectez-vous à Internet dès que possible pour une analyse multimodale complète avec l'IA)*`;
+            `*(💡 Note atelier : Reconnectez-vous à Internet dès que possible pour lancer l'analyse IA multimodale complète avec photo)*`;
         } else {
-          error.value = 'Mode hors-ligne : Vous n\'êtes pas connecté à Internet et ce code défaut n\'est pas encore en mémoire locale. Consultez l\'onglet "DTC Hors-Ligne".';
+          error.value = 'Mode hors-ligne : Absence de réseau Internet et ce code défaut n\'est pas encore répertorié dans la base locale. Consultez l\'onglet "DTC Hors-Ligne".';
         }
       } finally {
         loading.value = false;

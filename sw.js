@@ -1,10 +1,11 @@
-const CACHE_NAME = 'idiagauto-v4';
+const CACHE_NAME = 'idiagauto-v5';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './style.css',
   './app.js',
   './manifest.json',
+  './dtc_database.json',
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/vue@3/dist/vue.global.prod.js',
   'https://cdn.jsdelivr.net/npm/marked/marked.min.js'
@@ -33,16 +34,13 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Les requêtes API backend vers Render ne sont pas mises en cache statique
   if (event.request.url.includes('/api/diagnose')) {
     return;
   }
 
-  // Stratégie : Réseau d'abord, puis Cache si hors-ligne
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Met en cache la nouvelle version reçue du réseau
         const copy = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
         return response;

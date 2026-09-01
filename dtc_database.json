@@ -1,0 +1,191 @@
+[
+  {
+    "code": "P0100",
+    "system": "Admission / Débitmètre",
+    "title": "Débitmètre d'air massique (MAF) - Panne du circuit",
+    "causes": "Filament du débitmètre encrassé ou coupé, prise d'air sur la durite d'admission, connecteur oxydé, faisceau électrique endommagé.",
+    "check": "Contrôler l'alimentation (+12V et +5V de référence) et la masse. Mesurer la tension du signal au ralenti (environ 1,0V à 1,4V) puis observer la montée linéaire à l'accélération."
+  },
+  {
+    "code": "P0101",
+    "system": "Admission / Débitmètre",
+    "title": "Débitmètre d'air (MAF) - Plage de mesure / Performances",
+    "causes": "Débitmètre encrassé par les vapeurs d'huile, filtre à air colmaté, prise d'air en aval du débitmètre, fuite échangeur/durite turbo.",
+    "check": "Nettoyer l'élément sensible avec un spray nettoyant débitmètre/contact. Contrôler l'étanchéité de toutes les durites d'air entre le filtre et le papillon/turbo."
+  },
+  {
+    "code": "P0110",
+    "system": "Admission / Température",
+    "title": "Sonde de température d'air d'admission (IAT) - Panne du circuit",
+    "causes": "Sonde CTN intégrée au débitmètre ou sur collecteur défectueuse, faisceau coupé ou en court-circuit.",
+    "check": "Mesurer la résistance de la sonde débranchée (environ 2000 à 3000 Ω à 20°C). Vérifier la continuité des 2 fils vers le calculateur."
+  },
+  {
+    "code": "P0115",
+    "system": "Refroidissement",
+    "title": "Sonde de température liquide de refroidissement (ECT) - Circuit défaillant",
+    "causes": "Sonde CTN coupée ou en court-circuit, connecteur corrodé, thermostat bloqué ouvert, niveau de liquide bas.",
+    "check": "Mesurer la résistance aux bornes de la sonde (2500 Ω à 20°C, ~250 Ω à 90°C). Contrôler l'alimentation 5V et la masse envoyée par le calculateur."
+  },
+  {
+    "code": "P0120",
+    "system": "Admission / Papillon",
+    "title": "Capteur de position du papillon (TPS) A - Panne du circuit",
+    "causes": "Piste résistive du potentiomètre usée, connecteur du boîtier papillon oxydé, papillon encrassé/grippé.",
+    "check": "Contrôler l'alimentation 5V et la masse. Mesurer l'évolution de la tension du signal de 0,5V (papillon fermé) à 4,5V (pleine ouverture) sans coupure brutale."
+  },
+  {
+    "code": "P0130",
+    "system": "Dépollution / Échappement",
+    "title": "Sonde Lambda amont (Ligne 1, Capteur 1) - Panne du circuit",
+    "causes": "Résistance de chauffage de la sonde coupée, céramique empoisonnée par l'huile/liquide de refroidissement, faisceau brûlé sur l'échappement.",
+    "check": "Mesurer la résistance du circuit de chauffage (généralement entre 3 et 15 Ω sur les fils blancs/gris). Contrôler l'oscillation du signal entre 0,1V et 0,9V à chaud."
+  },
+  {
+    "code": "P0135",
+    "system": "Dépollution / Échappement",
+    "title": "Chauffage de la sonde Lambda (Ligne 1, Capteur 1) - Défaillance",
+    "causes": "Élément chauffant interne de la sonde coupé, fusible de réchauffage grillé, relais d'injection HS.",
+    "check": "Contrôler la présence du +12V après contact sur le connecteur et vérifier la continuité de la masse pilotée. Tester la résistance du réchauffeur à l'ohmmètre."
+  },
+  {
+    "code": "P0171",
+    "system": "Injection / Carburation",
+    "title": "Système trop pauvre (Ligne 1 - Excès d'air ou manque de carburant)",
+    "causes": "Prise d'air sur le collecteur/durites de dépression/reniflard, débitmètre sous-évaluateur, pression de carburant faible, injecteurs encrassés.",
+    "check": "Rechercher les prises d'air avec machine à fumée ou nettoyant frein. Contrôler la pression d'essence au manomètre sur la rampe. Vérifier les valeurs de correction de richesse (LTFT > +15%)."
+  },
+  {
+    "code": "P0172",
+    "system": "Injection / Carburation",
+    "title": "Système trop riche (Ligne 1 - Trop de carburant ou manque d'air)",
+    "causes": "Injecteur qui fuit/goutte en continu, régulateur de pression d'essence bloqué fermé, sonde lambda dérivée, filtre à air colmaté.",
+    "check": "Contrôler la ligne de retour de dépression du régulateur de pression. Tester l'étanchéité des injecteurs sous pression. Vérifier les corrections de richesse (LTFT < -15%)."
+  },
+  {
+    "code": "P0190",
+    "system": "Injection Diesel / Essence Directe",
+    "title": "Capteur de pression de la rampe de distribution - Panne de circuit",
+    "causes": "Capteur piézo-résistif défaillant, faux contact sur la prise 3 broches, faisceau blindé coupé.",
+    "check": "Vérifier la tension d'alimentation 5V stable et la masse. Contact mis sans démarrer, la tension de sortie doit être d'environ 0,5V (0 bar) et monter au-delà de 1,0V sous action du démarreur."
+  },
+  {
+    "code": "P0201",
+    "system": "Injection",
+    "title": "Injecteur Cylindre 1 - Panne du circuit de commande",
+    "causes": "Solénoïde d'injecteur coupé ou en court-circuit, faisceau coupé, étage de puissance du calculateur moteur grillé.",
+    "check": "Mesurer la résistance de la bobine d'injecteur (12 à 16 Ω pour injection indirecte standard). Tester la commande par masse pulsée avec une lampe témoin / oscilloscope."
+  },
+  {
+    "code": "P0234",
+    "system": "Suralimentation / Turbo",
+    "title": "Condition de suralimentation du moteur - Limite dépassée (Overboost)",
+    "causes": "Géométrie variable du turbo grippée par la suie, électrovanne de régulation de turbo N75 bloquée, durite de dépression percée ou pincée.",
+    "check": "Vérifier le mouvement fluide de la tige de wastegate/géométrie variable avec une pompe à dépression manuelle (Mityvac). Contrôler l'étanchéité du circuit de vide."
+  },
+  {
+    "code": "P0299",
+    "system": "Suralimentation / Turbo",
+    "title": "Pression de suralimentation du turbocompresseur - Trop basse (Sous-pression)",
+    "causes": "Durite de suralimentation déboîtée, fendue ou percée, échangeur air-air (intercooler) fissuré, wastegate entrouverte, jeu excessif sur l'axe de turbo.",
+    "check": "Mettre le circuit d'air de suralimentation sous pression (1 bar) pour localiser les sifflements/fuites. Inspecter l'axe de la turbine pour détecter tout frottement ou jeu anormal."
+  },
+  {
+    "code": "P0300",
+    "system": "Allumage / Combustion",
+    "title": "Ratés d'allumage aléatoires / cylindres multiples détectés",
+    "causes": "Bougies d'allumage usées/écartement d'électrodes trop grand, bobines crayons fatiguées, prise d'air collective, compression moteur inégale.",
+    "check": "Démonter les bougies et vérifier leur aspect (couleur, suie, huile). Contrôler la résistance des bobines. Prendre les compressions des cylindres à chaud."
+  },
+  {
+    "code": "P0301",
+    "system": "Allumage / Combustion",
+    "title": "Ratés d'allumage détectés - Cylindre 1",
+    "causes": "Bougie cylindre 1 HS, bobine d'allumage 1 défaillante, injecteur 1 bouché, défaut d'étanchéité soupape / poussoir hydraulique.",
+    "check": "Intervertir la bobine 1 avec la bobine 2 : si le défaut migre en P0302, remplacer la bobine. Sinon, intervertir la bougie ou tester l'injecteur 1."
+  },
+  {
+    "code": "P0335",
+    "system": "Capteurs Moteur",
+    "title": "Capteur de vilebrequin (Point Mort Haut - PMH) - Panne du circuit A",
+    "causes": "Capteur inductif ou Hall défaillant (bobinage qui se coupe à chaud), entrefer trop grand, cible magnétique/couronne endommagée.",
+    "check": "Mesurer la résistance de la bobine (400 à 1000 Ω à froid). Si le véhicule cale à chaud et refuse de repartir, mesurer la résistance immédiatement à chaud (si OL / infini = capteur HS)."
+  },
+  {
+    "code": "P0340",
+    "system": "Capteurs Moteur",
+    "title": "Capteur de position d'arbre à cames (AAC) - Panne du circuit",
+    "causes": "Capteur AAC défectueux, faisceau électrique pincé, connecteur desserré, décalage mécanique de la chaîne ou courroie de distribution.",
+    "check": "Contrôler la présence de l'alimentation 12V ou 5V et de la masse. Vérifier la cohérence du signal de synchronisation vilebrequin/AAC. Contrôler le calage distribution."
+  },
+  {
+    "code": "P0401",
+    "system": "Dépollution / EGR",
+    "title": "Système de recirculation des gaz d'échappement (EGR) - Débit insuffisant",
+    "causes": "Vanne EGR fortement calaminée et bloquée fermée, conduits d'admission bouchés par la calamine, tuyau de dépression débranché.",
+    "check": "Démonter la vanne EGR et le tuyau métallique de liaison pour nettoyage chimique/mécanique. Vérifier l'actionnement de la soupape à la dépression ou via l'outil de diagnostic."
+  },
+  {
+    "code": "P0420",
+    "system": "Dépollution / Catalyseur",
+    "title": "Efficacité du catalyseur inférieure au seuil (Ligne 1)",
+    "causes": "Catalyseur usé ou détruit suite à des ratés d'allumage prolongés, fuite d'échappement en amont, sonde lambda aval en défaut.",
+    "check": "Vérifier l'absence de fuite au niveau de la tresse et des raccords. Contrôler le signal de la sonde aval au multimètre : à chaud et stabilisé, le signal doit être quasi plat (~0,45V)."
+  },
+  {
+    "code": "P0500",
+    "system": "Vitesse Véhicule",
+    "title": "Capteur de vitesse du véhicule (VSS) - Panne de fonctionnement",
+    "causes": "Capteur de boîte de vitesses défaillant, information vitesse issue du bloc ABS absente, connecteur oxydé.",
+    "check": "Contrôler le faisceau du capteur de boîte ou interroger le calculateur ABS pour vérifier si les 4 capteurs de roues transmettent la vitesse."
+  },
+  {
+    "code": "P0562",
+    "system": "Électrique / Charge",
+    "title": "Tension du système électrique - Trop basse",
+    "causes": "Alternateur ne charge plus, courroie accessoire cassée/détendue, batterie en court-circuit interne, cosse de batterie desserrée ou sulfatée.",
+    "check": "Mesurer la tension aux bornes de la batterie moteur tournant (doit être entre 13,8V et 14,7V). Vérifier la chute de tension entre la carcasse de l'alternateur et la masse batterie."
+  },
+  {
+    "code": "P0606",
+    "system": "Calculateur Moteur (ECU)",
+    "title": "Processeur du calculateur moteur / PCM - Défaillance interne",
+    "causes": "Alimentation instable de l'ECU (chute de tension sévère), mauvaise masse principale du calculateur, calculateur endommagé ou corrompu.",
+    "check": "Contrôler scrupuleusement les masses du châssis et du moteur (tresse de masse). Vérifier les alimentations +12V permanentes et après contact au connecteur ECU."
+  },
+  {
+    "code": "DF002",
+    "system": "Renault / Injection",
+    "title": "Circuit potentiomètre papillon / capteur position pédale",
+    "causes": "Usure des pistes potentiométriques de la pédale d'accélérateur, connecteur intermédiaire sous le tableau de bord lâche, boîtier papillon encrassé.",
+    "check": "Contrôler la cohérence des deux pistes de pédale (la piste 2 doit valoir exactement la moitié de la piste 1). Nettoyer le connecteur à la bombe contact."
+  },
+  {
+    "code": "DF053",
+    "system": "Renault / Common Rail",
+    "title": "Fonction régulation de pression de rail",
+    "causes": "Filtre à gazole colmaté, présence de limaille de fer sur l'actuateur IMV (pompe Delphi), injecteur avec fuite de retour excessive.",
+    "check": "Effectuer un test de débit de fuite retour des 4 injecteurs avec des éprouvettes graduées. Inspecter le fond du filtre à gazole avec un aimant pour détecter la limaille."
+  },
+  {
+    "code": "DF154",
+    "system": "Renault / Capteurs",
+    "title": "Circuit capteur arbre à cames",
+    "causes": "Capteur AAC défaillant, connecteur 3 voies détérioré, électrovanne de déphaseur d'arbre à cames encrassée ou calage distribution décalé.",
+    "check": "Mesurer l'alimentation 12V/5V et le signal au multimètre. Vérifier la résistance de l'électrovanne de déphaseur (~7 à 12 Ω)."
+  },
+  {
+    "code": "U0100",
+    "system": "Réseau Multiplexé (CAN Bus)",
+    "title": "Perte de communication avec le calculateur de gestion moteur (ECM/PCM)",
+    "causes": "Ligne bus CAN High ou CAN Low coupée ou en court-circuit, relais principal d'injection défaillant, perte de masse de l'ECU.",
+    "check": "Mesurer la résistance de terminaison du bus CAN contact coupé entre les broches 6 et 14 de la prise OBD-II : la valeur doit être exactement d'environ 60 Ω (deux résistances de 120 Ω en parallèle)."
+  },
+  {
+    "code": "U0121",
+    "system": "Réseau Multiplexé (CAN Bus)",
+    "title": "Perte de communication avec le module de freinage ABS / ESP",
+    "causes": "Calculateur ABS non alimenté (fusible grillé, relais HS), connecteur principal ABS corrodé ou déverrouillé, panne interne du bloc ABS.",
+    "check": "Vérifier le gros fusible d'alimentation permanente de la pompe ABS (généralement 40A ou 50A) et le fusible d'alimentation après contact de l'électronique ABS."
+  }
+]
