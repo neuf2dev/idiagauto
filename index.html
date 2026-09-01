@@ -33,6 +33,7 @@
       <div class="mt-4 flex flex-wrap justify-center gap-3">
         <button 
           @click="installPwa"
+          type="button"
           class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow-lg hover:shadow-emerald-500/20 transition cursor-pointer"
         >
           <span>📲 Installer l'application sur ce téléphone</span>
@@ -41,20 +42,30 @@
 
       <!-- Navigation par onglets -->
       <div class="mt-6 flex justify-center border-b border-slate-700">
-        <div class="flex gap-2">
+        <div class="flex flex-wrap justify-center gap-2">
           <button 
+            type="button"
             @click="currentTab = 'diag'"
             :class="currentTab === 'diag' ? 'border-b-2 border-blue-500 text-blue-400 font-bold' : 'text-slate-400 hover:text-slate-200'"
-            class="px-4 py-2 text-sm transition cursor-pointer flex items-center gap-2"
+            class="px-3 sm:px-4 py-2 text-sm transition cursor-pointer flex items-center gap-1.5"
           >
             <span>🔍 Diagnostic IA</span>
           </button>
           <button 
+            type="button"
             @click="currentTab = 'elec'"
             :class="currentTab === 'elec' ? 'border-b-2 border-blue-500 text-blue-400 font-bold' : 'text-slate-400 hover:text-slate-200'"
-            class="px-4 py-2 text-sm transition cursor-pointer flex items-center gap-2"
+            class="px-3 sm:px-4 py-2 text-sm transition cursor-pointer flex items-center gap-1.5"
           >
-            <span>⚡ Calculateur Électrique</span>
+            <span>⚡ Mesures Électriques</span>
+          </button>
+          <button 
+            type="button"
+            @click="currentTab = 'offline_dtc'"
+            :class="currentTab === 'offline_dtc' ? 'border-b-2 border-blue-500 text-blue-400 font-bold' : 'text-slate-400 hover:text-slate-200'"
+            class="px-3 sm:px-4 py-2 text-sm transition cursor-pointer flex items-center gap-1.5"
+          >
+            <span>📚 DTC Hors-Ligne</span>
           </button>
         </div>
       </div>
@@ -72,6 +83,7 @@
           <button 
             v-for="example in examples" 
             :key="example.dtc"
+            type="button"
             @click="fillExample(example)"
             class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-md text-xs text-slate-300 transition cursor-pointer"
           >
@@ -163,10 +175,10 @@
         </div>
       </div>
 
-      <!-- Zone Rapport Imprimable / Visible -->
+      <!-- Zone Rapport Imprimable -->
       <div id="printable-report" v-if="report" class="bg-slate-800/90 border border-slate-700 rounded-xl p-6 shadow-xl mb-8 space-y-6">
         
-        <!-- Jauge de Gravité 🚦 -->
+        <!-- Jauge de Gravité -->
         <div 
           :class="severityClasses"
           class="p-4 rounded-xl border flex items-start gap-3 shadow-md print-box"
@@ -178,7 +190,7 @@
           </div>
         </div>
 
-        <!-- Encart Visuel : Photo analysée -->
+        <!-- Encart Visuel -->
         <div v-if="activeImage" class="p-3 bg-slate-900/80 rounded-xl border border-blue-900/50 flex items-center gap-3 print-box">
           <img :src="activeImage" alt="Élément analysé" class="h-16 w-24 object-cover rounded-lg border border-slate-700 shrink-0" />
           <div class="text-xs">
@@ -200,6 +212,7 @@
           
           <div class="flex items-center gap-2 actions-bar">
             <button 
+              type="button"
               @click="exportPdf"
               class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg transition border border-slate-600 cursor-pointer"
             >
@@ -207,6 +220,7 @@
             </button>
 
             <button 
+              type="button"
               @click="copyReport"
               class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg transition border border-slate-600 cursor-pointer"
             >
@@ -215,7 +229,7 @@
           </div>
         </div>
 
-        <!-- Checklist Interactive d'Atelier ☑️ -->
+        <!-- Checklist Interactive d'Atelier -->
         <div v-if="checklist.length > 0" class="p-4 bg-slate-900/90 rounded-xl border border-slate-700/80 print-box">
           <div class="flex items-center justify-between mb-2.5">
             <h3 class="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -300,7 +314,7 @@
       <div v-if="history.length > 0" class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-6 no-print">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider">Historique récent</h3>
-          <button @click="clearHistory" class="text-xs text-slate-500 hover:text-red-400 transition cursor-pointer">
+          <button @click="clearHistory" type="button" class="text-xs text-slate-500 hover:text-red-400 transition cursor-pointer">
             Effacer l'historique
           </button>
         </div>
@@ -339,7 +353,7 @@
             <span>⚡ Contrôle des Valeurs Électriques Atelier</span>
           </h2>
           <p class="text-xs text-slate-400 mt-1">
-            Sélectionne un organe mécanique, entre la mesure relevée au multimètre et obtiens le verdict de conformité immédiat.
+            Sélectionne un organe mécanique, entre la mesure relevée au multimètre et vérifie immédiatement les tolérances.
           </p>
         </div>
 
@@ -349,7 +363,7 @@
               Organe à contrôler
             </label>
             <select 
-              v-model="elec.component" 
+              v-model="elecComponent" 
               class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
             >
               <option value="battery_rest">Batterie 12V (Tension au repos)</option>
@@ -368,7 +382,7 @@
               Valeur mesurée ({{ currentUnit }})
             </label>
             <input 
-              v-model.number="elec.value" 
+              v-model.number="elecValue" 
               type="number" 
               step="any"
               :placeholder="'Ex : ' + currentPlaceholder"
@@ -377,7 +391,7 @@
           </div>
         </div>
 
-        <!-- Résultat de la mesure -->
+        <!-- Verdict de mesure -->
         <div v-if="elecResult" :class="elecResult.boxClass" class="p-4 rounded-xl border flex items-start gap-3.5 transition">
           <span class="text-2xl">{{ elecResult.icon }}</span>
           <div class="space-y-1">
@@ -389,14 +403,107 @@
           </div>
         </div>
 
-        <!-- Rappel des protocoles multimètre -->
+        <!-- Rappel multimètre -->
         <div class="p-4 bg-slate-900/80 rounded-lg border border-slate-800 text-xs text-slate-400 space-y-2">
           <p class="font-semibold text-slate-200">📌 Bonnes pratiques de mesure :</p>
           <ul class="list-disc pl-4 space-y-1">
-            <li><strong>Résistance ($\Omega$) :</strong> toujours mesurer composant débranché et contact coupé pour ne pas fausser la mesure ni endommager le multimètre.</li>
-            <li><strong>Tension (V) :</strong> multimètre en calibre Volts continu (DC). Pointes bien franches sur les cosses ou broches du faisceau.</li>
+            <li><strong>Résistance (Ω) :</strong> toujours mesurer composant débranché et contact coupé pour ne pas fausser la mesure ni endommager le multimètre.</li>
+            <li><strong>Tension (V) :</strong> multimètre en calibre Volts continu (DC). Pointes bien franches sur les bornes.</li>
           </ul>
         </div>
+      </div>
+
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- ONGLET 3 : DICTIONNAIRE DTC HORS-LIGNE                     -->
+    <!-- ========================================================= -->
+    <div v-show="currentTab === 'offline_dtc'" class="space-y-6">
+      
+      <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-6 shadow-xl space-y-4">
+        <div>
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <span>📚 Base de Données DTC Hors-Ligne</span>
+            </h2>
+            <span class="px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-800 text-emerald-300 text-[10px] font-bold">
+              100% Hors-Ligne
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">
+            Consulte les codes défauts atelier fréquents (EOBD standard & constructeurs) sans connexion Internet.
+          </p>
+        </div>
+
+        <!-- Barre de recherche -->
+        <div class="relative">
+          <input 
+            v-model="dtcSearchQuery" 
+            type="text" 
+            placeholder="Rechercher par code (ex: P0300, DF053...) ou par mot-clé (ex: sonde, bobine, FAP)..." 
+            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+          />
+          <button 
+            v-if="dtcSearchQuery" 
+            @click="dtcSearchQuery = ''"
+            type="button"
+            class="absolute right-3 top-2.5 text-slate-400 hover:text-white text-sm"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- Compteur de résultats -->
+        <div class="text-[11px] text-slate-400 flex justify-between items-center">
+          <span>{{ filteredDtcList.length }} code(s) répertorié(s)</span>
+          <span class="italic">Clique sur un code pour injecter dans le diag IA</span>
+        </div>
+
+        <!-- Liste des fiches DTC -->
+        <div class="space-y-3 max-h-[550px] overflow-y-auto pr-1">
+          <div 
+            v-for="item in filteredDtcList" 
+            :key="item.code"
+            class="p-4 bg-slate-900/90 border border-slate-800 rounded-xl hover:border-slate-700 transition space-y-2"
+          >
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
+              <div class="flex items-center gap-2">
+                <span class="font-mono font-bold text-sm text-blue-400 px-2 py-0.5 rounded bg-blue-950/80 border border-blue-900">
+                  {{ item.code }}
+                </span>
+                <span class="text-xs font-semibold text-white">{{ item.title }}</span>
+              </div>
+              <span class="text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-semibold"
+                :class="item.system === 'Allumage' ? 'bg-amber-950 text-amber-300 border border-amber-800' :
+                        item.system === 'Injection' ? 'bg-red-950 text-red-300 border border-red-800' :
+                        item.system === 'Dépollution' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' :
+                        'bg-slate-800 text-slate-300 border border-slate-700'"
+              >
+                {{ item.system }}
+              </span>
+            </div>
+
+            <div class="text-xs text-slate-300 space-y-1">
+              <p><strong class="text-slate-400">Causes probables :</strong> {{ item.causes }}</p>
+              <p><strong class="text-slate-400">Contrôle atelier :</strong> {{ item.check }}</p>
+            </div>
+
+            <div class="pt-2 flex justify-end">
+              <button 
+                @click="injectDtcToDiag(item)"
+                type="button"
+                class="px-2.5 py-1 bg-slate-800 hover:bg-blue-600 hover:text-white border border-slate-700 rounded-md text-[11px] text-slate-300 transition cursor-pointer flex items-center gap-1.5"
+              >
+                <span>🚀 Analyser avec l'IA</span>
+              </button>
+            </div>
+          </div>
+
+          <div v-if="filteredDtcList.length === 0" class="text-center py-8 text-xs text-slate-500">
+            Aucun code DTC ne correspond à votre recherche.
+          </div>
+        </div>
+
       </div>
 
     </div>

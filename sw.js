@@ -1,4 +1,4 @@
-const CACHE_NAME = 'idiagauto-v2';
+const CACHE_NAME = 'idiagauto-v3';
 
 self.addEventListener('install', (event) => {
   // Force l'activation immédiate du nouveau Service Worker

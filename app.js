@@ -2,9 +2,8 @@ const { createApp, ref, computed, onMounted } = Vue;
 
 createApp({
   setup() {
-    const currentTab = ref('diag'); // 'diag' ou 'elec'
+    const currentTab = ref('diag'); // 'diag', 'elec', ou 'offline_dtc'
 
-    // Diagnostic form
     const form = ref({ vehicle: '', dtc_code: '', symptoms: '' });
     const activeVehicle = ref('');
     const activeDtc = ref('');
@@ -24,11 +23,84 @@ createApp({
     const imageBase64 = ref(null);
     const imagePreview = ref(null);
 
-    // Calculateur Électrique
-    const elec = ref({
-      component: 'battery_rest',
-      value: null
-    });
+    // Calculateur électrique
+    const elecComponent = ref('battery_rest');
+    const elecValue = ref(null);
+
+    // Dictionnaire DTC hors-ligne
+    const dtcSearchQuery = ref('');
+    const offlineDtcDatabase = [
+      {
+        code: 'P0300',
+        system: 'Allumage',
+        title: 'Ratés d\'allumage multiples / aléatoires détectés',
+        causes: 'Bougies usées, bobines d\'allumage défaillantes, prise d\'air admission, injecteurs encrassés.',
+        check: 'Contrôler la couleur des bougies, tester la résistance des bobines (primaire/secondaire), vérifier l\'étanchéité de l\'admission avec de la fumée.'
+      },
+      {
+        code: 'P0340',
+        system: 'Capteurs',
+        title: 'Capteur de position d\'arbre à cames (Ligne 1) - Panne du circuit',
+        causes: 'Capteur AAC HS, faisceau coupé/oxydé, cible d\'arbre à cames sale, calage de distribution décalé.',
+        check: 'Mesurer la continuité et l\'alimentation (5V ou 12V) au connecteur. Signal au multimètre/oscilloscope. Vérifier le calage distribution.'
+      },
+      {
+        code: 'P0171',
+        system: 'Injection',
+        title: 'Mélange trop pauvre (Ligne 1 - Trop d\'air ou pas assez de carburant)',
+        causes: 'Prise d\'air après débitmètre (durite percée), débitmètre de masse d\'air (MAF) encrassé, filtre à essence colmaté, pompe à essence fatiguée.',
+        check: 'Inspecter les manchons d\'admission en caoutchouc, nettoyer le capteur MAF au nettoyant contact, mesurer la pression d\'essence à la rampe.'
+      },
+      {
+        code: 'P0172',
+        system: 'Injection',
+        title: 'Mélange trop riche (Ligne 1 - Trop de carburant ou manque d\'air)',
+        causes: 'Sonde lambda amont défaillante, régulateur de pression d\'essence bloqué fermé, injecteur qui fuit/goutte, filtre à air bouché.',
+        check: 'Contrôler la tension oscillante de la sonde lambda (0,1V à 0,9V), vérifier le tuyau de dépression du régulateur de pression.'
+      },
+      {
+        code: 'P0420',
+        system: 'Dépollution',
+        title: 'Rendement du catalyseur inférieur au seuil (Ligne 1)',
+        causes: 'Catalyseur colmaté ou détruit, fuite à l\'échappement en amont, sonde lambda aval défectueuse.',
+        check: 'Vérifier l\'absence de fuite/trou sur la ligne d\'échappement. Comparer la courbe de la sonde aval (qui doit être stable à ~0,45V à chaud).'
+      },
+      {
+        code: 'P0190',
+        system: 'Injection',
+        title: 'Capteur de pression de la rampe de distribution - Panne du circuit',
+        causes: 'Capteur de pression de rampe HS, faisceau écrasé, connecteur oxydé, pompe haute pression (Common Rail).',
+        check: 'Contrôler l\'alimentation 5V et la masse du capteur. Mesurer la tension du signal au ralenti (environ 1,0V à 1,3V selon consigne).'
+      },
+      {
+        code: 'P0115',
+        system: 'Refroidissement',
+        title: 'Sonde de température de liquide de refroidissement (ECT) - Panne du circuit',
+        causes: 'Sonde CTN coupée ou en court-circuit, thermostat bloqué ouvert, connecteur corrodé.',
+        check: 'Mesurer la résistance de la sonde débranchée (environ 2000 à 3000 Ω à 20°C, chute à ~200-300 Ω à 90°C).'
+      },
+      {
+        code: 'P0401',
+        system: 'Dépollution',
+        title: 'Système EGR - Débit insuffisant détecté',
+        causes: 'Vanne EGR calaminée/bloquée, conduits d\'admission encrassés, capteur de pression différentielle défaillant.',
+        check: 'Démonter la vanne EGR pour nettoyage mécanique, tester l\'actionneur pneumatique ou électrique, décalaminer les conduits.'
+      },
+      {
+        code: 'DF053',
+        system: 'Injection',
+        title: 'Renault/Dacia : Fonction régulation de pression rail',
+        causes: 'Régulateur de débit sur pompe HP grippé, filtre à gazole colmaté, fuite de retour d\'injecteurs excessive.',
+        check: 'Faire un test de débit de retour d\'injecteurs aux éprouvettes (godets), remplacer le filtre à gazole, contrôler la limaille dans le filtre.'
+      },
+      {
+        code: 'DF002',
+        system: 'Alimentation',
+        title: 'Renault/Dacia : Potentiomètre de position papillon / Pédale',
+        causes: 'Piste du potentiomètre usée, connecteur pédale d\'accélérateur lâche, boîtier papillon encrassé.',
+        check: 'Mesurer la variation linéaire de tension sur les deux pistes lors de l\'enfoncement progressif de la pédale (double piste de sécurité).'
+      }
+    ];
 
     const examples = [
       { vehicle: 'BMW 320i E36', dtc: 'P0340', symptoms: 'Manque de puissance, calage à chaud' },
@@ -52,19 +124,36 @@ createApp({
       }
     });
 
-    // Unités et placeholders pour le calculateur
+    const filteredDtcList = computed(() => {
+      const q = dtcSearchQuery.value.trim().toLowerCase();
+      if (!q) return offlineDtcDatabase;
+      return offlineDtcDatabase.filter(item => 
+        item.code.toLowerCase().includes(q) ||
+        item.title.toLowerCase().includes(q) ||
+        item.causes.toLowerCase().includes(q) ||
+        item.system.toLowerCase().includes(q)
+      );
+    });
+
+    const injectDtcToDiag = (item) => {
+      form.value.dtc_code = item.code;
+      form.value.symptoms = item.title;
+      currentTab.value = 'diag';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     const currentUnit = computed(() => {
-      if (elec.value.component.startsWith('battery') || elec.value.component === 'alternator') {
+      if (elecComponent.value.startsWith('battery') || elecComponent.value === 'alternator') {
         return 'Volts DC (V)';
       }
-      if (elec.value.component === 'ignition_secondary') {
+      if (elecComponent.value === 'ignition_secondary') {
         return 'kilo-Ohms (kΩ)';
       }
       return 'Ohms (Ω)';
     });
 
     const currentPlaceholder = computed(() => {
-      switch (elec.value.component) {
+      switch (elecComponent.value) {
         case 'battery_rest': return '12.6';
         case 'battery_cranking': return '10.2';
         case 'alternator': return '14.2';
@@ -77,19 +166,18 @@ createApp({
       }
     });
 
-    // Évaluation logique des mesures électriques
     const elecResult = computed(() => {
-      const val = elec.value.value;
+      const val = elecValue.value;
       if (val === null || val === undefined || isNaN(val) || val === '') return null;
 
-      switch (elec.value.component) {
+      switch (elecComponent.value) {
         case 'battery_rest':
           if (val >= 12.6) {
             return {
               status: 'Batterie chargée à 100 %',
               icon: '🟢',
               range: '12,6 V à 12,8 V',
-              comment: 'Tension de repos parfaite. État de charge optimal.',
+              comment: 'Tension de repos optimale.',
               boxClass: 'bg-emerald-950/80 border-emerald-800 text-emerald-200'
             };
           } else if (val >= 12.2) {
@@ -97,7 +185,7 @@ createApp({
               status: 'Batterie partiellement déchargée (50-75 %)',
               icon: '🟡',
               range: '12,6 V à 12,8 V',
-              comment: 'Recharge conseillée pour éviter la sulfatation des plaques.',
+              comment: 'Recharge conseillée pour éviter la sulfatation.',
               boxClass: 'bg-amber-950/80 border-amber-800 text-amber-200'
             };
           } else {
@@ -105,7 +193,7 @@ createApp({
               status: 'Batterie déchargée ou en fin de vie',
               icon: '🔴',
               range: '12,6 V à 12,8 V',
-              comment: 'Tension critique (< 12,0 V = décharge profonde). Tester les éléments et recharger.',
+              comment: 'Tension critique (< 12,0 V = décharge profonde). Tester et recharger.',
               boxClass: 'bg-red-950/80 border-red-800 text-red-200'
             };
           }
@@ -115,8 +203,8 @@ createApp({
             return {
               status: 'Chute de tension normale au démarrage',
               icon: '🟢',
-              range: '≥ 9,6 V pendant l\'action du démarreur',
-              comment: 'La batterie délivre une intensité suffisante sous forte charge.',
+              range: '≥ 9,6 V sous action démarreur',
+              comment: 'Intensité délivrée suffisante sous forte charge.',
               boxClass: 'bg-emerald-950/80 border-emerald-800 text-emerald-200'
             };
           } else {
@@ -124,7 +212,7 @@ createApp({
               status: 'Chute de tension excessive au démarrage',
               icon: '🔴',
               range: '≥ 9,6 V',
-              comment: 'Batterie affaiblie, démarreur en court-circuit ou mauvaise masse moteur.',
+              comment: 'Batterie affaiblie, démarreur en court-circuit ou masse moteur défectueuse.',
               boxClass: 'bg-red-950/80 border-red-800 text-red-200'
             };
           }
@@ -135,7 +223,7 @@ createApp({
               status: 'Circuit de charge conforme',
               icon: '🟢',
               range: '13,8 V à 14,7 V moteur tournant',
-              comment: 'Régulateur et alternateur fonctionnent parfaitement.',
+              comment: 'Régulateur et alternateur opérationnels.',
               boxClass: 'bg-emerald-950/80 border-emerald-800 text-emerald-200'
             };
           } else if (val < 13.8) {
@@ -143,7 +231,7 @@ createApp({
               status: 'Sous-charge (Alternateur défaillant)',
               icon: '🔴',
               range: '13,8 V à 14,7 V',
-              comment: 'Courroie accessoire détendue, charbons/régulateur usés ou alternateur HS.',
+              comment: 'Courroie détendue, charbons usés ou alternateur HS.',
               boxClass: 'bg-red-950/80 border-red-800 text-red-200'
             };
           } else {
@@ -151,7 +239,7 @@ createApp({
               status: 'Surtension critique (Régulateur HS)',
               icon: '🔴',
               range: '13,8 V à 14,7 V',
-              comment: 'Tension trop élevée (> 14,8 V) ! Risque de destruction des calculateurs et de la batterie.',
+              comment: 'Tension trop haute (> 14,8 V). Risque de griller les calculateurs.',
               boxClass: 'bg-red-950/80 border-red-800 text-red-200'
             };
           }
@@ -162,7 +250,7 @@ createApp({
               status: 'Enroulement primaire conforme',
               icon: '🟢',
               range: '0,4 Ω à 1,5 Ω',
-              comment: 'Résistance du circuit primaire de bobine dans les tolérances standard.',
+              comment: 'Résistance primaire de bobine normale.',
               boxClass: 'bg-emerald-950/80 border-emerald-800 text-emerald-200'
             };
           } else {
@@ -170,7 +258,7 @@ createApp({
               status: 'Bobine non conforme (Primaire)',
               icon: '🔴',
               range: '0,4 Ω à 1,5 Ω',
-              comment: 'Résistance hors plage : court-circuit interne (si ~0 Ω) ou bobinage coupé (si infini / OL).',
+              comment: 'Court-circuit interne (si ~0 Ω) ou bobinage coupé (si infini / OL).',
               boxClass: 'bg-red-950/80 border-red-800 text-red-200'
             };
           }
@@ -180,7 +268,7 @@ createApp({
             return {
               status: 'Enroulement secondaire conforme',
               icon: '🟢',
-              range: '5 kΩ à 15 kΩ (selon modèle)',
+              range: '5 kΩ à 15 kΩ',
               comment: 'Résistance haute tension normale.',
               boxClass: 'bg-emerald-950/80 border-emerald-800 text-emerald-200'
             };
@@ -189,7 +277,7 @@ createApp({
               status: 'Secondaire haute tension défaillant',
               icon: '🔴',
               range: '5 kΩ à 15 kΩ',
-              comment: 'Bobinage HT coupé ou amorçage interne. Remplacement de bobine requis.',
+              comment: 'Bobinage HT coupé ou amorçage interne.',
               boxClass: 'bg-red-950/80 border-red-800 text-red-200'
             };
           }
@@ -200,7 +288,7 @@ createApp({
               status: 'Solénoïde d\'injecteur conforme',
               icon: '🟢',
               range: '11 Ω à 16 Ω (haute impédance)',
-              comment: 'Résistance normale pour un injecteur essence à commande indirecte.',
+              comment: 'Résistance nominale pour injecteur essence standard.',
               boxClass: 'bg-emerald-950/80 border-emerald-800 text-emerald-200'
             };
           } else {
@@ -208,7 +296,7 @@ createApp({
               status: 'Injecteur hors tolérance',
               icon: '🔴',
               range: '11 Ω à 16 Ω',
-              comment: 'Bobinage d\'injecteur en court-circuit ou coupé.',
+              comment: 'Bobinage en court-circuit ou coupé.',
               boxClass: 'bg-red-950/80 border-red-800 text-red-200'
             };
           }
@@ -218,8 +306,8 @@ createApp({
             return {
               status: 'Capteur PMH inductif conforme',
               icon: '🟢',
-              range: '400 Ω à 1000 Ω (moteur froid)',
-              comment: 'Continuité et bobinage de détection de position corrects.',
+              range: '400 Ω à 1000 Ω (froid)',
+              comment: 'Bobinage de détection de position opérationnel.',
               boxClass: 'bg-emerald-950/80 border-emerald-800 text-emerald-200'
             };
           } else {
@@ -227,7 +315,7 @@ createApp({
               status: 'Capteur PMH HS ou coupé',
               icon: '🔴',
               range: '400 Ω à 1000 Ω',
-              comment: 'Bobinage ouvert ou altéré par la chaleur (cause typique de calage ou non-démarrage à chaud).',
+              comment: 'Bobinage ouvert ou altéré par la chaleur (cause typique de calage à chaud).',
               boxClass: 'bg-red-950/80 border-red-800 text-red-200'
             };
           }
@@ -235,10 +323,10 @@ createApp({
         case 'temp_sensor':
           if (val >= 1800 && val <= 3200) {
             return {
-              status: 'Sonde CTN conforme à température ambiante',
+              status: 'Sonde CTN conforme à ~20°C',
               icon: '🟢',
-              range: '2000 Ω à 3000 Ω à ~20°C',
-              comment: 'Valeur normale pour capteur de température liquide de refroidissement ou air.',
+              range: '2000 Ω à 3000 Ω à 20°C',
+              comment: 'Valeur normale pour capteur de température eau/air.',
               boxClass: 'bg-emerald-950/80 border-emerald-800 text-emerald-200'
             };
           } else {
@@ -246,7 +334,7 @@ createApp({
               status: 'Sonde de température hors tolérance',
               icon: '🟡',
               range: '2000 Ω à 3000 Ω à 20°C',
-              comment: 'Si mesurée à 20°C, la sonde dérive (fausse indication transmise au calculateur).',
+              comment: 'Si mesurée à 20°C, la sonde dérive.',
               boxClass: 'bg-amber-950/80 border-amber-800 text-amber-200'
             };
           }
@@ -303,6 +391,7 @@ createApp({
     };
 
     const fillExample = (ex) => {
+      currentTab.value = 'diag';
       form.value.vehicle = ex.vehicle;
       form.value.dtc_code = ex.dtc;
       form.value.symptoms = ex.symptoms;
@@ -447,10 +536,14 @@ createApp({
       progressPercent,
       imageBase64,
       imagePreview,
-      elec,
+      elecComponent,
+      elecValue,
       currentUnit,
       currentPlaceholder,
       elecResult,
+      dtcSearchQuery,
+      filteredDtcList,
+      injectDtcToDiag,
       handleImageUpload,
       removeImage,
       oscaroLink,
