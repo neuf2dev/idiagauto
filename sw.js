@@ -1,18 +1,30 @@
-const CACHE_NAME = 'idiagauto-v3';
+const CACHE_NAME = 'idiagauto-v4';
+const STATIC_ASSETS = [
+  './',
+  './index.html',
+  './style.css',
+  './app.js',
+  './manifest.json',
+  'https://cdn.tailwindcss.com',
+  'https://unpkg.com/vue@3/dist/vue.global.prod.js',
+  'https://cdn.jsdelivr.net/npm/marked/marked.min.js'
+];
 
 self.addEventListener('install', (event) => {
-  // Force l'activation immédiate du nouveau Service Worker
-  self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(STATIC_ASSETS);
+    }).then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', (event) => {
-  // Supprime tous les anciens caches pour éviter les écrans blancs
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
+    caches.keys().then((keys) => {
       return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            return caches.delete(cache);
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
           }
         })
       );
@@ -21,8 +33,20 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Stratégie réseau d'abord : va chercher le code frais sur le serveur
+  // Les requêtes API backend vers Render ne sont pas mises en cache statique
+  if (event.request.url.includes('/api/diagnose')) {
+    return;
+  }
+
+  // Stratégie : Réseau d'abord, puis Cache si hors-ligne
   event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
+    fetch(event.request)
+      .then((response) => {
+        // Met en cache la nouvelle version reçue du réseau
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });

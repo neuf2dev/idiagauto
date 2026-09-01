@@ -27,78 +27,78 @@ createApp({
     const elecComponent = ref('battery_rest');
     const elecValue = ref(null);
 
-    // Dictionnaire DTC hors-ligne
+    // Base de Données DTC Hors-Ligne
     const dtcSearchQuery = ref('');
     const offlineDtcDatabase = [
       {
         code: 'P0300',
-        system: 'Allumage',
-        title: 'Ratés d\'allumage multiples / aléatoires détectés',
-        causes: 'Bougies usées, bobines d\'allumage défaillantes, prise d\'air admission, injecteurs encrassés.',
-        check: 'Contrôler la couleur des bougies, tester la résistance des bobines (primaire/secondaire), vérifier l\'étanchéité de l\'admission avec de la fumée.'
+        system: 'Allumage / Combustion',
+        title: 'Ratés d\'allumage cylindres multiples / aléatoires',
+        causes: 'Bougies d\'allumage usées/encrassées, bobines crayons défaillantes, prise d\'air importante à l\'admission, injecteurs colmatés, pression d\'essence trop basse.',
+        check: 'Démonter et inspecter les bougies. Mesurer la résistance primaire (0.4-1.5 Ω) et secondaire (5-15 kΩ) des bobines. Contrôler les durites de dépression avec du nettoyant frein/fumée.'
       },
       {
         code: 'P0340',
-        system: 'Capteurs',
-        title: 'Capteur de position d\'arbre à cames (Ligne 1) - Panne du circuit',
-        causes: 'Capteur AAC HS, faisceau coupé/oxydé, cible d\'arbre à cames sale, calage de distribution décalé.',
-        check: 'Mesurer la continuité et l\'alimentation (5V ou 12V) au connecteur. Signal au multimètre/oscilloscope. Vérifier le calage distribution.'
+        system: 'Capteurs Moteur',
+        title: 'Capteur de position d\'arbre à cames (AAC) - Panne du circuit',
+        causes: 'Capteur à effet Hall/inductif HS, faisceau électrique pincé ou coupé, connecteur oxydé, décalage distribution mécanique.',
+        check: 'Contrôler l\'alimentation (+12V ou +5V) et la masse sur le faisceau. Mesurer la résistance si capteur inductif. Vérifier la tension du signal au multimètre.'
       },
       {
         code: 'P0171',
-        system: 'Injection',
-        title: 'Mélange trop pauvre (Ligne 1 - Trop d\'air ou pas assez de carburant)',
-        causes: 'Prise d\'air après débitmètre (durite percée), débitmètre de masse d\'air (MAF) encrassé, filtre à essence colmaté, pompe à essence fatiguée.',
-        check: 'Inspecter les manchons d\'admission en caoutchouc, nettoyer le capteur MAF au nettoyant contact, mesurer la pression d\'essence à la rampe.'
+        system: 'Injection / Mélange',
+        title: 'Mélange trop pauvre (Ligne 1 - Trop d\'air ou manque d\'essence)',
+        causes: 'Prise d\'air après débitmètre (durite d\'admission fissurée), débitmètre MAF encrassé, filtre à carburant colmaté, pompe à essence fatiguée, régulateur de pression HS.',
+        check: 'Vérifier l\'étanchéité du collecteur et des soufflets en caoutchouc. Nettoyer le filament du débitmètre au nettoyant contact. Mesurer la pression d\'essence à la rampe.'
       },
       {
         code: 'P0172',
-        system: 'Injection',
+        system: 'Injection / Mélange',
         title: 'Mélange trop riche (Ligne 1 - Trop de carburant ou manque d\'air)',
-        causes: 'Sonde lambda amont défaillante, régulateur de pression d\'essence bloqué fermé, injecteur qui fuit/goutte, filtre à air bouché.',
-        check: 'Contrôler la tension oscillante de la sonde lambda (0,1V à 0,9V), vérifier le tuyau de dépression du régulateur de pression.'
+        causes: 'Sonde lambda amont défaillante (bloquée en tension haute), injecteur qui fuit/goutte en continu, régulateur de pression d\'essence bloqué fermé, filtre à air colmaté.',
+        check: 'Mesurer le signal oscillant de la sonde lambda (0.1V à 0.9V). Vérifier le retour de dépression du régulateur (pas de présence de carburant dans la durite).'
       },
       {
         code: 'P0420',
         system: 'Dépollution',
         title: 'Rendement du catalyseur inférieur au seuil (Ligne 1)',
-        causes: 'Catalyseur colmaté ou détruit, fuite à l\'échappement en amont, sonde lambda aval défectueuse.',
-        check: 'Vérifier l\'absence de fuite/trou sur la ligne d\'échappement. Comparer la courbe de la sonde aval (qui doit être stable à ~0,45V à chaud).'
+        causes: 'Catalyseur colmaté ou céramique fondue, fuite sur la ligne d\'échappement en amont du catalyseur, sonde lambda aval défectueuse.',
+        check: 'Contrôler l\'absence de fuite au collecteur/tresse d\'échappement. À chaud à 2500 tr/min, vérifier que la sonde aval reste stable (~0.45V) et ne recopie pas la sonde amont.'
       },
       {
         code: 'P0190',
-        system: 'Injection',
-        title: 'Capteur de pression de la rampe de distribution - Panne du circuit',
-        causes: 'Capteur de pression de rampe HS, faisceau écrasé, connecteur oxydé, pompe haute pression (Common Rail).',
-        check: 'Contrôler l\'alimentation 5V et la masse du capteur. Mesurer la tension du signal au ralenti (environ 1,0V à 1,3V selon consigne).'
+        system: 'Injection Common Rail',
+        title: 'Capteur de pression de rampe d\'injection - Panne du circuit',
+        causes: 'Capteur de pression de rampe HS, câblage détérioré, connecteur oxydé, pompe haute pression désamorcée ou régulateur de pression grippé.',
+        check: 'Contrôler l\'alimentation 5V et la masse du connecteur. Mesurer la tension signal contact mis (~0.5V) et sous démarreur (doit monter à > 1.0V pour autoriser l\'injection).'
       },
       {
         code: 'P0115',
         system: 'Refroidissement',
-        title: 'Sonde de température de liquide de refroidissement (ECT) - Panne du circuit',
-        causes: 'Sonde CTN coupée ou en court-circuit, thermostat bloqué ouvert, connecteur corrodé.',
-        check: 'Mesurer la résistance de la sonde débranchée (environ 2000 à 3000 Ω à 20°C, chute à ~200-300 Ω à 90°C).'
+        title: 'Sonde de température liquide de refroidissement (ECT) - Panne du circuit',
+        causes: 'Sonde CTN coupée ou en court-circuit, thermostat d\'eau bloqué ouvert, câblage vers calculateur moteur détérioré.',
+        check: 'Mesurer la résistance de la sonde débranchée (2000-3000 Ω à 20°C, 200-300 Ω à 90°C). Vérifier la montée en température physique des durites de radiateur.'
       },
       {
         code: 'P0401',
-        system: 'Dépollution',
-        title: 'Système EGR - Débit insuffisant détecté',
-        causes: 'Vanne EGR calaminée/bloquée, conduits d\'admission encrassés, capteur de pression différentielle défaillant.',
-        check: 'Démonter la vanne EGR pour nettoyage mécanique, tester l\'actionneur pneumatique ou électrique, décalaminer les conduits.'
+        system: 'Dépollution EGR',
+        title: 'Système EGR - Débit de recirculation des gaz insuffisant',
+        causes: 'Vanne EGR calaminée et bloquée fermée, conduits d\'admission obstrués par la suie, tuyau de dépression percé (si commande pneumatique).',
+        check: 'Déposer la vanne EGR pour nettoyage mécanique au décapant four/nettoyant frein. Vérifier le déplacement libre du clapet.'
       },
       {
         code: 'DF053',
-        system: 'Injection',
-        title: 'Renault/Dacia : Fonction régulation de pression rail',
-        causes: 'Régulateur de débit sur pompe HP grippé, filtre à gazole colmaté, fuite de retour d\'injecteurs excessive.',
-        check: 'Faire un test de débit de retour d\'injecteurs aux éprouvettes (godets), remplacer le filtre à gazole, contrôler la limaille dans le filtre.'
+        system: 'Injection Renault/Dacia',
+        title: 'Fonction régulation de pression de rampe',
+        causes: 'Filtre à gazole colmaté, régulateur IMV/MPROP sur pompe HP encrassé, retour de fuite injecteur excessif.',
+        check: 'Effectuer un test de retour injecteurs avec 4 godets gradués sous démarreur. Vérifier l\'absence de limaille métallique dans le bocal de filtre à gazole.'
       },
       {
         code: 'DF002',
-        system: 'Alimentation',
-        title: 'Renault/Dacia : Potentiomètre de position papillon / Pédale',
-        causes: 'Piste du potentiomètre usée, connecteur pédale d\'accélérateur lâche, boîtier papillon encrassé.',
-        check: 'Mesurer la variation linéaire de tension sur les deux pistes lors de l\'enfoncement progressif de la pédale (double piste de sécurité).'
+        system: 'Alimentation Renault/Dacia',
+        title: 'Circuit potentiomètre papillon / capteur position pédale',
+        causes: 'Pistes du capteur d\'accélérateur usées, faux contact sur la prise pédale, papillon motorisé encrassé.',
+        check: 'Mesurer la linéarité des tensions sur les deux pistes lors de l\'enfoncement de la pédale. Nettoyer les broches à la bombe contact.'
       }
     ];
 
@@ -420,8 +420,12 @@ createApp({
       report.value = '';
       copied.value = false;
       activeVehicle.value = form.value.vehicle;
-      activeDtc.value = form.value.dtc_code;
+      activeDtc.value = (form.value.dtc_code || '').trim().toUpperCase();
       activeImage.value = imageBase64.value;
+
+      // Secours automatique si l'appareil est hors-ligne
+      const cleanCode = activeDtc.value;
+      const matchedDtc = offlineDtcDatabase.find(d => d.code.toUpperCase() === cleanCode);
 
       try {
         const payload = {
@@ -449,29 +453,49 @@ createApp({
         severityAdvice.value = data.severity_advice || '';
         checklist.value = (data.checklist || []).map(item => ({ text: item, checked: false }));
 
-        const newEntry = {
-          vehicle: form.value.vehicle,
-          dtc_code: form.value.dtc_code,
-          symptoms: form.value.symptoms,
-          image: activeImage.value,
-          report: data.report,
-          severity_level: severityLevel.value,
-          severity_label: severityLabel.value,
-          severity_advice: severityAdvice.value,
-          checklist: checklist.value,
-          date: new Date().toLocaleDateString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-        };
-        history.value = [newEntry, ...history.value.filter(h => h.report !== data.report)].slice(0, 10);
-        try {
-          localStorage.setItem('idiagauto_history', JSON.stringify(history.value));
-        } catch (storageErr) {
-          console.warn('Quota LocalStorage dépassé.');
-        }
-
       } catch (e) {
-        error.value = e.message || 'Impossible de joindre le serveur API.';
+        // En cas de perte de réseau, bascule sur la base locale embarquée
+        if (matchedDtc) {
+          severityLevel.value = 'ORANGE';
+          severityLabel.value = `Fiche Locale Hors-Ligne : ${matchedDtc.code}`;
+          severityAdvice.value = 'Connexion Internet absente. Diagnostic généré depuis la base de secours locale.';
+          
+          checklist.value = [
+            { text: `Vérification du système ${matchedDtc.system}`, checked: false },
+            { text: matchedDtc.check, checked: false },
+            { text: 'Contrôle visuel des connecteurs et faisceaux associés', checked: false }
+          ];
+
+          report.value = `### 📋 Fiche Technique Hors-Ligne — ${matchedDtc.code}\n\n` +
+            `**Système concerné :** ${matchedDtc.system}\n\n` +
+            `**Description :** ${matchedDtc.title}\n\n` +
+            `**Causes probables identifiées :**\n${matchedDtc.causes}\n\n` +
+            `**Méthodologie de contrôle atelier recommandée :**\n${matchedDtc.check}\n\n` +
+            `*(💡 Note atelier : Reconnectez-vous à Internet dès que possible pour une analyse multimodale complète avec l'IA)*`;
+        } else {
+          error.value = 'Mode hors-ligne : Vous n\'êtes pas connecté à Internet et ce code défaut n\'est pas encore en mémoire locale. Consultez l\'onglet "DTC Hors-Ligne".';
+        }
       } finally {
         loading.value = false;
+        
+        if (report.value) {
+          const newEntry = {
+            vehicle: form.value.vehicle,
+            dtc_code: form.value.dtc_code,
+            symptoms: form.value.symptoms,
+            image: activeImage.value,
+            report: report.value,
+            severity_level: severityLevel.value,
+            severity_label: severityLabel.value,
+            severity_advice: severityAdvice.value,
+            checklist: checklist.value,
+            date: new Date().toLocaleDateString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+          };
+          history.value = [newEntry, ...history.value.filter(h => h.report !== report.value)].slice(0, 10);
+          try {
+            localStorage.setItem('idiagauto_history', JSON.stringify(history.value));
+          } catch (storageErr) {}
+        }
       }
     };
 
