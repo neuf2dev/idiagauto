@@ -37,7 +37,6 @@ createApp({
       { vehicle: 'Renault Clio 3 1.5 dCi', dtc: 'DF053', symptoms: 'Démarrage difficile' }
     ];
 
-    // Chargement de la base JSON
     const loadDtcDatabase = async () => {
       try {
         const res = await fetch('dtc_database.json');
@@ -45,7 +44,7 @@ createApp({
           offlineDtcDatabase.value = await res.json();
         }
       } catch (err) {
-        console.warn('Chargement base locale via JSON...', err);
+        console.warn('Chargement base locale via JSON impossible', err);
       }
     };
 
@@ -84,6 +83,29 @@ createApp({
       currentTab.value = 'diag';
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
+
+    // Liens de partage WhatsApp et Email
+    const whatsappShareUrl = computed(() => {
+      if (!report.value) return '#';
+      const text = `🛠️ *Rapport Diag Auto*\n` +
+        `🚗 *Véhicule :* ${activeVehicle.value}\n` +
+        (activeDtc.value ? `📟 *DTC :* ${activeDtc.value}\n` : '') +
+        `🚦 *Urgence :* [${severityLabel.value}]\n\n` +
+        `Consulte le rapport complet sur iDiagAuto : https://neuf2dev.github.io/idiagauto/`;
+      return `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    });
+
+    const emailShareUrl = computed(() => {
+      if (!report.value) return '#';
+      const subject = `Rapport Diagnostic Atelier - ${activeVehicle.value}`;
+      const body = `Bonjour,\n\nVoici la synthèse du diagnostic réalisé pour le véhicule ${activeVehicle.value} :\n\n` +
+        `• Statut : [${severityLabel.value}]\n` +
+        `• Recommandation : ${severityAdvice.value}\n\n` +
+        `Détails techniques :\n` +
+        report.value.slice(0, 800) + '...\n\n' +
+        `Rapport complet accessible sur : https://neuf2dev.github.io/idiagauto/`;
+      return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    });
 
     const currentUnit = computed(() => {
       if (elecComponent.value.startsWith('battery') || elecComponent.value === 'alternator') {
@@ -396,7 +418,7 @@ createApp({
         checklist.value = (data.checklist || []).map(item => ({ text: item, checked: false }));
 
       } catch (e) {
-        // Secours automatique si réseau indisponible
+        // Mode secours hors-ligne
         if (matchedDtc) {
           severityLevel.value = 'ORANGE';
           severityLabel.value = `Fiche Hors-Ligne : ${matchedDtc.code}`;
@@ -521,7 +543,9 @@ createApp({
       copyReport,
       exportPdf,
       loadFromHistory,
-      clearHistory
+      clearHistory,
+      whatsappShareUrl,
+      emailShareUrl
     };
   }
 }).mount('#app');
