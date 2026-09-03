@@ -10,14 +10,25 @@ createApp({
     const dtcCode = ref('');
     const dtcError = ref('');
     const isLoading = ref(false);
-    const errorMessage = ref('');
 
-    // Exemples d'origine conformes à l'image 088
+    // Exemples d'origine conformes à la capture 480
     const quickExamples = [
-      { label: 'BMW 320i E36 · P0340', vehicle: 'BMW Série 3 E36 320i', dtc: 'P0340', symptoms: 'Manque de reprise, ralenti instable, démarrage difficile' },
-      { label: 'Opel Meriva 1.7 CDTI · P0190', vehicle: 'Opel Meriva 1.7 CDTI', dtc: 'P0190', symptoms: 'Coupure moteur sous charge, voyant clé' },
-      { label: 'Renault Clio 3 1.5 dCi · DF053', vehicle: 'Renault Clio 3 1.5 dCi', dtc: 'P0089', symptoms: 'Message injection à contrôler' }
+      { label: 'BMW 320i E36', model: 'BMW 320i E36', code: 'P0340', vehicle: 'BMW Série 3 E36 320i 1998', dtc: 'P0340', symptoms: 'Manque de reprise, ralenti instable, démarrage difficile' },
+      { label: 'Opel Meriva 1.7 CDTI', model: 'Opel Meriva 1.7 CDTI', code: 'P0190', vehicle: 'Opel Meriva 1.7 CDTI', dtc: 'P0190', symptoms: 'Coupure moteur sous forte charge, voyant clé' },
+      { label: 'Renault Clio 3 1.5 dCi', model: 'Renault Clio 3 1.5 dCi', code: 'DF053', vehicle: 'Renault Clio 3 1.5 dCi', dtc: 'DF053', symptoms: 'Message injection à contrôler' }
     ];
+
+    // Base DTC locale pour l'onglet 3
+    const dtcSearch = ref('');
+    const dtcDatabase = ref([
+      { code: 'P0300', system: 'Moteur', label: 'Ratés d\'allumage multiples / cylindres aléatoires détectés' },
+      { code: 'P0340', system: 'Capteurs', label: 'Capteur de position d\'arbre à cames A - panne du circuit' },
+      { code: 'P0190', system: 'Injection', label: 'Capteur de pression de la rampe de distribution - panne du circuit' },
+      { code: 'DF053', system: 'Renault / Dacia', label: 'Fonction régulation de pression rail' },
+      { code: 'C1252', system: 'Freinage / Hybride', label: 'Circuit du moteur de pompe d\'assistance de freinage' },
+      { code: 'C1528', system: 'Direction assistée', label: 'Anomalie rotation / signal capteur moteur EPS' },
+      { code: 'U0100', system: 'Réseau CAN', label: 'Perte de communication avec le calculateur moteur (ECM/PCM)' }
+    ]);
 
     // PWA Prompt
     const installPrompt = ref(null);
@@ -37,14 +48,14 @@ createApp({
         return;
       }
 
-      const dtcRegex = /^[PCBU][0-9A-F]{4}$/;
+      // Accepte format standard P/C/B/U + 4 hex ou codes constructeur type DFxxx
+      const isStandardDtc = /^[PCBU][0-9A-F]{4}$/.test(val);
+      const isRenaultDf = /^DF[0-9A-F]{3}$/.test(val);
 
-      if (!/^[PCBU]/.test(val)) {
-        dtcError.value = 'Doit débuter par P, C, B ou U';
-      } else if (val.length < 5) {
+      if (val.length < 5) {
         dtcError.value = `5 caractères requis (${val.length}/5)`;
-      } else if (!dtcRegex.test(val)) {
-        dtcError.value = 'Format hexadécimal invalide (0-9, A-F)';
+      } else if (!isStandardDtc && !isRenaultDf) {
+        dtcError.value = 'Code invalide (ex: P0300 ou DF053)';
       } else {
         dtcError.value = '';
       }
@@ -55,22 +66,27 @@ createApp({
       dtcCode.value = ex.dtc;
       symptoms.value = ex.symptoms;
       dtcError.value = '';
-      errorMessage.value = '';
       savePersistentData();
     };
 
     const isFormValid = computed(() => {
-      const dtcRegex = /^[PCBU][0-9A-F]{4}$/;
-      return vehicle.value.trim().length >= 2 && dtcRegex.test(dtcCode.value);
+      const val = dtcCode.value;
+      const isStandardDtc = /^[PCBU][0-9A-F]{4}$/.test(val);
+      const isRenaultDf = /^DF[0-9A-F]{3}$/.test(val);
+      return vehicle.value.trim().length >= 2 && (isStandardDtc || isRenaultDf);
+    });
+
+    const filteredDtcList = computed(() => {
+      const q = dtcSearch.value.trim().toUpperCase();
+      if (!q) return dtcDatabase.value;
+      return dtcDatabase.value.filter(d => d.code.includes(q) || d.label.toUpperCase().includes(q));
     });
 
     const startDiagnostic = () => {
       if (!isFormValid.value) return;
       isLoading.value = true;
-      errorMessage.value = '';
       savePersistentData();
 
-      // Simulation de traitement
       setTimeout(() => {
         isLoading.value = false;
       }, 500);
@@ -106,8 +122,9 @@ createApp({
       dtcCode,
       dtcError,
       isLoading,
-      errorMessage,
       quickExamples,
+      dtcSearch,
+      filteredDtcList,
       showInstallModal,
       savePersistentData,
       onDtcInput,

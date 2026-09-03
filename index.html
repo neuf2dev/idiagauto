@@ -24,7 +24,7 @@
 <body class="text-slate-100 min-h-screen font-sans antialiased selection:bg-blue-600 selection:text-white py-10 px-4">
   <div id="app" class="max-w-2xl mx-auto space-y-6">
 
-    <!-- En-tête centré (Image 088) -->
+    <!-- En-tête centré (Capture 480) -->
     <header class="flex flex-col items-center text-center space-y-3">
       <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-950/80 border border-blue-800/60 text-blue-400 text-xs font-semibold shadow-sm">
         <span>⚡</span>
@@ -40,7 +40,7 @@
         </p>
       </div>
 
-      <!-- Bouton vert d'installation centré (Image 088) -->
+      <!-- Bouton vert d'installation (Capture 480) -->
       <button 
         @click="handleInstallClick"
         type="button"
@@ -51,8 +51,8 @@
       </button>
     </header>
 
-    <!-- Deux onglets d'origine (Image 088) -->
-    <nav class="flex justify-center gap-8 border-b border-slate-800 text-xs font-semibold">
+    <!-- 3 Onglets conformes à la Capture 480 -->
+    <nav class="flex justify-center gap-6 sm:gap-8 border-b border-slate-800 text-xs font-semibold">
       <button 
         @click="currentTab = 'diag'"
         :class="currentTab === 'diag' ? 'text-blue-400 border-b-2 border-blue-500 pb-2.5' : 'text-slate-400 hover:text-slate-200 pb-2.5'"
@@ -63,44 +63,55 @@
       </button>
 
       <button 
-        @click="currentTab = 'calc'"
-        :class="currentTab === 'calc' ? 'text-blue-400 border-b-2 border-blue-500 pb-2.5' : 'text-slate-400 hover:text-slate-200 pb-2.5'"
+        @click="currentTab = 'multimeter'"
+        :class="currentTab === 'multimeter' ? 'text-blue-400 border-b-2 border-blue-500 pb-2.5' : 'text-slate-400 hover:text-slate-200 pb-2.5'"
         class="transition cursor-pointer flex items-center gap-1.5"
       >
         <span>⚡</span>
-        <span>Calculateur Électrique</span>
+        <span>Mesures Électriques</span>
+      </button>
+
+      <button 
+        @click="currentTab = 'dtc'"
+        :class="currentTab === 'dtc' ? 'text-blue-400 border-b-2 border-blue-500 pb-2.5' : 'text-slate-400 hover:text-slate-200 pb-2.5'"
+        class="transition cursor-pointer flex items-center gap-1.5"
+      >
+        <span>📗</span>
+        <span>DTC Hors-Ligne</span>
       </button>
     </nav>
 
-    <!-- VUE 1 : DIAGNOSTIC IA -->
+    <!-- VUE 1 : DIAGNOSTIC IA (Capture 480) -->
     <section v-if="currentTab === 'diag'" class="space-y-4">
 
-      <!-- Exemples rapides d'origine (Image 088) -->
+      <!-- Exemples rapides conformes 480 -->
       <div class="space-y-2">
-        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Exemples rapides :</span>
+        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">EXEMPLES RAPIDES :</span>
         <div class="flex flex-wrap items-center gap-2">
           <button 
             v-for="ex in quickExamples" 
             :key="ex.label"
             @click="loadExample(ex)"
-            class="bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-800 px-3 py-1 rounded-lg transition text-xs cursor-pointer"
+            class="bg-[#0b1329] hover:bg-slate-800 text-slate-300 border border-slate-800 px-3 py-1 rounded-lg transition text-xs cursor-pointer flex items-center gap-1.5"
           >
-            {{ ex.label }}
+            <span>{{ ex.model }}</span>
+            <span>·</span>
+            <span class="text-blue-400 font-mono">{{ ex.code }}</span>
           </button>
         </div>
       </div>
 
-      <!-- Carte formulaire principale (Image 088) -->
-      <div class="bg-[#0f172a]/90 border border-slate-800/90 rounded-2xl p-6 space-y-4 shadow-xl">
+      <!-- Cadre Formulaire (Capture 480) -->
+      <div class="bg-[#0b1329] border border-slate-800/90 rounded-2xl p-6 space-y-4 shadow-xl">
         
         <!-- Véhicule (persistant) -->
         <div>
-          <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Véhicule *</label>
+          <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">VÉHICULE *</label>
           <input 
             v-model="vehicle" 
             @input="savePersistentData"
             type="text" 
-            placeholder="Ex : bmw e36 cabriolet, toyota yaris 3 hybride..." 
+            placeholder="Ex : BMW Série 3 E36 320i 1998, Opel Meriva 1.7 CDTI..." 
             class="w-full bg-[#080d1a] border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition"
           />
         </div>
@@ -109,7 +120,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <div class="flex items-center justify-between mb-1.5">
-              <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Code Défaut (DTC)</label>
+              <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">CODE DÉFAUT (DTC)</label>
               <span v-if="dtcError" class="text-[10px] text-amber-400 font-medium">{{ dtcError }}</span>
             </div>
             <input 
@@ -117,14 +128,14 @@
               @input="onDtcInput"
               type="text" 
               maxlength="5"
-              placeholder="Ex : P0300, C1252..." 
+              placeholder="EX : P0340, P0170, DF154..." 
               :class="dtcError ? 'border-amber-500 focus:border-amber-500' : 'border-slate-800 focus:border-blue-500'"
               class="w-full uppercase font-mono bg-[#080d1a] border rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none transition"
             />
           </div>
 
           <div>
-            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Symptômes observés</label>
+            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">SYMPTÔMES OBSERVÉS</label>
             <input 
               v-model="symptoms" 
               @input="savePersistentData"
@@ -135,9 +146,11 @@
           </div>
         </div>
 
-        <!-- Zone Photo personnalisée d'origine (Image 088) -->
+        <!-- Zone Photo stylisée (Capture 480) -->
         <div>
-          <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Photo (écran valise diag, bougie, fuite, courroie...) <span class="text-slate-500 normal-case">(optionnel)</span></label>
+          <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+            PHOTO (ÉCRAN VALISE DIAG, BOUGIE, FUITE, COURROIE...) <span class="text-slate-500 normal-case">(optionnel)</span>
+          </label>
           <label class="w-full border border-dashed border-slate-800 hover:border-slate-700 bg-[#080d1a] rounded-xl py-3 px-4 flex items-center justify-center gap-2 text-xs text-slate-400 cursor-pointer transition">
             <span>📷</span>
             <span>Prendre une photo ou importer</span>
@@ -145,28 +158,23 @@
           </label>
         </div>
 
-        <!-- Bouton de lancement -->
+        <!-- Bouton Lancer le diagnostic (Capture 480) -->
         <button 
           @click="startDiagnostic" 
           :disabled="isLoading || !isFormValid"
           :class="(!isFormValid || isLoading) ? 'opacity-50 cursor-not-allowed bg-blue-600/50 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg cursor-pointer'"
-          class="w-full py-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
+          class="w-full py-3.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
         >
           <span v-if="isLoading">⏳ Analyse en cours...</span>
           <span v-else>Lancer le diagnostic</span>
         </button>
 
-        <!-- Message d'erreur éventuel (comme sur image 088) -->
-        <div v-if="errorMessage" class="p-3 bg-red-950/40 border border-red-900/60 rounded-xl text-xs text-red-400">
-          {{ errorMessage }}
-        </div>
-
       </div>
 
     </section>
 
-    <!-- VUE 2 : CALCULATEUR ÉLECTRIQUE (Image 088) -->
-    <section v-if="currentTab === 'calc'" class="bg-[#0f172a]/90 border border-slate-800/90 rounded-2xl p-6 space-y-4 shadow-xl">
+    <!-- VUE 2 : MESURES ÉLECTRIQUES -->
+    <section v-if="currentTab === 'multimeter'" class="bg-[#0b1329] border border-slate-800/90 rounded-2xl p-6 space-y-4 shadow-xl">
       <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
         <span class="text-xl">⚡</span>
         <h2 class="text-xs font-bold text-white uppercase tracking-wider">Aide aux Mesures & Schémas Atelier</h2>
@@ -183,6 +191,35 @@
           <p class="font-bold text-blue-400">Circuit de charge :</p>
           <p class="text-slate-300">• 13,8 V à 14,5 V : Normal</p>
           <p class="text-slate-300">• &gt; 14,8 V : Surtension régulateur</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- VUE 3 : DTC HORS-LIGNE -->
+    <section v-if="currentTab === 'dtc'" class="bg-[#0b1329] border border-slate-800/90 rounded-2xl p-6 space-y-4 shadow-xl">
+      <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+        <span class="text-xl">📗</span>
+        <h2 class="text-xs font-bold text-white uppercase tracking-wider">Base DTC Locale Hors-Ligne</h2>
+      </div>
+
+      <input 
+        v-model="dtcSearch" 
+        type="text" 
+        placeholder="Rechercher un code (ex: P0340, C1252)..." 
+        class="w-full uppercase font-mono bg-[#080d1a] border border-slate-800 rounded-xl px-4 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-blue-500"
+      />
+
+      <div class="space-y-2 pt-1">
+        <div 
+          v-for="d in filteredDtcList" 
+          :key="d.code" 
+          class="p-3 bg-[#080d1a] border border-slate-800/80 rounded-xl space-y-1"
+        >
+          <div class="flex items-center justify-between">
+            <span class="font-mono font-bold text-blue-400 text-xs">{{ d.code }}</span>
+            <span class="text-[10px] bg-slate-900 text-slate-400 px-2 py-0.5 rounded">{{ d.system }}</span>
+          </div>
+          <p class="text-xs text-slate-300">{{ d.label }}</p>
         </div>
       </div>
     </section>
