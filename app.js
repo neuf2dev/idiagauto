@@ -2,21 +2,30 @@ const { createApp, ref, computed, onMounted } = Vue;
 
 createApp({
   setup() {
+    // Nettoyage immédiat des anciens résidus de persistance
+    localStorage.removeItem('idiag_vehicle');
+    localStorage.removeItem('idiag_dtc');
+    localStorage.removeItem('idiag_symptoms');
+
     const currentTab = ref('diag');
 
-    // Persistance
-    const vehicle = ref(localStorage.getItem('idiag_vehicle') || '');
-    const dtcCode = ref(localStorage.getItem('idiag_dtc') || '');
-    const symptoms = ref(localStorage.getItem('idiag_symptoms') || '');
+    // Formulaire totalement vide au démarrage
+    const vehicle = ref('');
+    const dtcCode = ref('');
+    const symptoms = ref('');
     const dtcError = ref('');
     const isLoading = ref(false);
 
-    // Données du Rapport
+    // Rapport généré
     const report = ref(null);
 
-    // Listes d'historique pour autocomplétion
-    const vehicleHistory = ref(JSON.parse(localStorage.getItem('idiag_vehicle_history') || '[]'));
-    const dtcHistory = ref(JSON.parse(localStorage.getItem('idiag_dtc_history') || '[]'));
+    // Suggestions de véhicules (datalist)
+    const vehicleHistory = ref([
+      'BMW Série 3 E36 320i 1998',
+      'Toyota Yaris 3 Hybride',
+      'Opel Meriva 1.7 CDTI',
+      'Renault Clio 3 1.5 dCi'
+    ]);
 
     // Exemples rapides
     const quickExamples = [
@@ -38,43 +47,22 @@ createApp({
       { code: 'U0100', system: 'Réseau CAN', label: 'Perte de communication avec le calculateur moteur (ECM/PCM)' }
     ]);
 
-    // PWA Prompt
+    // PWA
     const installPrompt = ref(null);
     const showInstallModal = ref(false);
 
-    const savePersistentData = () => {
-      localStorage.setItem('idiag_vehicle', vehicle.value);
-      localStorage.setItem('idiag_dtc', dtcCode.value);
-      localStorage.setItem('idiag_symptoms', symptoms.value);
-    };
-
-    const addToHistory = (item, listRef, storageKey) => {
-      const cleanItem = (item || '').trim();
-      if (!cleanItem) return;
-      if (!listRef.value.includes(cleanItem)) {
-        listRef.value.unshift(cleanItem);
-        if (listRef.value.length > 20) listRef.value.pop();
-        localStorage.setItem(storageKey, JSON.stringify(listRef.value));
-      }
-    };
-
+    // Validation du code DTC
     const onDtcInput = () => {
       dtcCode.value = (dtcCode.value || '').toUpperCase().trim();
       const val = dtcCode.value;
-      savePersistentData();
 
       if (!val) {
         dtcError.value = '';
         return;
       }
 
-      const isStandardDtc = /^[PCBU][0-9A-F]{4}$/i.test(val);
-      const isRenaultDf = /^DF[0-9A-F]{3}$/i.test(val);
-
       if (val.length < 5) {
         dtcError.value = `5 caractères requis (${val.length}/5)`;
-      } else if (!isStandardDtc && !isRenaultDf) {
-        dtcError.value = 'Format attendu : ex: P0340, C1252, DF053';
       } else {
         dtcError.value = '';
       }
@@ -85,13 +73,8 @@ createApp({
       dtcCode.value = ex.code;
       symptoms.value = ex.symptoms;
       dtcError.value = '';
-      savePersistentData();
+      report.value = null;
     };
-
-    const isFormValid = computed(() => {
-      const val = (dtcCode.value || '').trim();
-      return (vehicle.value || '').trim().length >= 2 && val.length === 5;
-    });
 
     const completedChecksCount = computed(() => {
       if (!report.value || !report.value.checks) return 0;
@@ -104,25 +87,27 @@ createApp({
       return dtcDatabase.value.filter(d => d.code.includes(q) || d.label.toUpperCase().includes(q));
     });
 
+    // Lancement du diagnostic direct
     const startDiagnostic = () => {
-      const code = (dtcCode.value || '').toUpperCase().trim();
-      const currentVehicle = (vehicle.value || '').trim();
+      const curVeh = (vehicle.value || '').trim();
+      const curCode = (dtcCode.value || '').toUpperCase().trim();
 
-      if (!code || code.length < 5) {
-        dtcError.value = '5 caractères requis';
+      if (!curVeh) {
+        alert('Veuillez renseigner le modèle du véhicule.');
+        return;
+      }
+
+      if (curCode.length !== 5) {
+        dtcError.value = 'Le code DTC doit faire 5 caractères (ex: P0300, C1252)';
         return;
       }
 
       isLoading.value = true;
-      savePersistentData();
-
-      addToHistory(currentVehicle, vehicleHistory, 'idiag_vehicle_history');
-      addToHistory(code, dtcHistory, 'idiag_dtc_history');
 
       setTimeout(() => {
-        const isToyotaHybride = currentVehicle.toLowerCase().includes('toyota') || currentVehicle.toLowerCase().includes('yaris');
+        const isToyotaHybride = curVeh.toLowerCase().includes('toyota') || curVeh.toLowerCase().includes('yaris');
 
-        if (code === 'C1252' || (code.startsWith('C12') && isToyotaHybride)) {
+        if (curCode === 'C1252' || (curCode.startsWith('C12') && isToyotaHybride)) {
           report.value = {
             severity_title: 'DÉFAILLANCE HYDRAULIQUE DE FREINAGE - ARRÊT IMMÉDIAT',
             severity_desc: 'Chute de pression ou anomalie moteur de pompe hydraulique (Brake Booster). Pédale dure, risque de perte de freinage assisté.',
@@ -132,7 +117,7 @@ createApp({
               { label: 'Tester la continuité du relais de pompe de freinage', done: false },
               { label: 'Vérifier l\'absence de fuite au niveau de l\'accumulateur de pression', done: false }
             ],
-            technical_analysis: `Le code DTC ${code} sur ${currentVehicle} signale une coupure d'alimentation ou un blocage du moteur de pompe d'assistance hydraulique. Sur ce véhicule, l'assistance est assurée par un groupe électropompe haute pression avec accumulateur de gaz.`,
+            technical_analysis: `Le code DTC ${curCode} sur ${curVeh} signale une coupure d'alimentation ou un blocage du moteur de pompe d'assistance hydraulique. Sur ce véhicule, l'assistance est assurée par un groupe électropompe haute pression avec accumulateur de gaz.`,
             causes: [
               { title: 'Pompe de frein / Accumulateur HS', detail: 'Usure des charbons du moteur électrique de pompe ou fuite interne.' },
               { title: 'Batterie 12V faible', detail: 'Sous-tension au démarrage coupant le calculateur de freinage.' },
@@ -152,13 +137,13 @@ createApp({
         } else {
           report.value = {
             severity_title: 'ANOMALIE SYSTÈME DÉTECTÉE - VÉRIFICATION NÉCESSAIRE',
-            severity_desc: `Défaut enregistré sous le code ${code}. Un contrôle méthodique du circuit électrique et des actionneurs associés est requis.`,
+            severity_desc: `Défaut enregistré sous le code ${curCode}. Un contrôle méthodique du circuit électrique et des actionneurs associés est requis.`,
             checks: [
               { label: 'Contrôler l\'état de charge de la batterie 12V', done: false },
               { label: 'Vérifier le fusible associé au circuit', done: false },
               { label: 'Inspecter visuellement l\'état du faisceau et des connecteurs', done: false }
             ],
-            technical_analysis: `Le code DTC ${code} indique une divergence de signal ou une absence de réponse dans le circuit concerné sur ${currentVehicle}.`,
+            technical_analysis: `Le code DTC ${curCode} indique une divergence de signal ou une absence de réponse dans le circuit concerné sur ${curVeh}.`,
             causes: [
               { title: 'Faisceau / Connectique', detail: 'Oxydation, mauvais contact ou fil coupé/pincé.' },
               { title: 'Composant / Capteur défaillant', detail: 'Composant hors tolérances ou en court-circuit.' }
@@ -214,10 +199,6 @@ createApp({
         e.preventDefault();
         installPrompt.value = e;
       });
-
-      if (dtcCode.value) {
-        onDtcInput();
-      }
     });
 
     return {
@@ -232,12 +213,9 @@ createApp({
       dtcSearch,
       filteredDtcList,
       vehicleHistory,
-      dtcHistory,
       showInstallModal,
-      savePersistentData,
       onDtcInput,
       loadExample,
-      isFormValid,
       completedChecksCount,
       startDiagnostic,
       shareReportWhatsApp,
