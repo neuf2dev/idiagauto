@@ -2,12 +2,12 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>iDiagAuto - Assistant IA Diagnostic Mécanique</title>
 
   <!-- PWA & Métas -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#2563eb">
+  <meta name="theme-color" content="#1e293b">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -16,232 +16,398 @@
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 
   <style>
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    @media print {
+      body { background: white !important; color: black !important; }
+      header, nav, .no-print, button { display: none !important; }
+      .print-border { border: 1px solid #cbd5e1 !important; box-shadow: none !important; }
+    }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen pb-12 font-sans antialiased selection:bg-blue-600 selection:text-white">
-  <div id="app" class="max-w-md mx-auto min-h-screen flex flex-col bg-slate-950 shadow-2xl relative">
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-blue-600 selection:text-white pb-12">
+  <div id="app" class="max-w-4xl mx-auto px-4 py-6 space-y-6">
 
-    <!-- En-tête Mobile -->
-    <header class="p-4 bg-slate-900/90 backdrop-blur border-b border-slate-800 sticky top-0 z-30">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <span class="text-2xl">⚡</span>
-          <div>
-            <h1 class="text-lg font-black tracking-tight text-white leading-none">
-              iDiag<span class="text-blue-500">Auto</span>
-            </h1>
-            <p class="text-[10px] text-slate-400 font-medium">Diagnostic & protocoles atelier</p>
-          </div>
+    <!-- En-tête -->
+    <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-blue-600/20 border border-blue-500/30 rounded-2xl text-2xl">⚡</div>
+        <div>
+          <h1 class="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-1.5">
+            iDiag<span class="text-blue-500">Auto</span>
+          </h1>
+          <p class="text-xs text-slate-400 font-medium">Diagnostic mécanique assisté, protocoles atelier et schémas de mesure</p>
         </div>
+      </div>
 
-        <!-- Bouton Installer persistant -->
+      <div class="flex items-center gap-2">
         <button 
           @click="handleInstallClick"
           type="button"
-          class="bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg shadow transition cursor-pointer flex items-center gap-1"
+          class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-lg transition flex items-center gap-1.5 cursor-pointer"
         >
           <span>📲</span>
-          <span>Installer</span>
+          <span>Installer l'application sur téléphone</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation par Onglets -->
+    <nav class="flex gap-2 border-b border-slate-800 pb-3 text-xs font-semibold no-print">
+      <button 
+        @click="currentTab = 'diag'"
+        :class="currentTab === 'diag' ? 'bg-blue-600/20 text-blue-400 border-blue-500/40' : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'"
+        class="px-4 py-2 rounded-xl border transition cursor-pointer flex items-center gap-1.5"
+      >
+        <span>🔍</span>
+        <span>Diagnostic IA</span>
+      </button>
+
+      <button 
+        @click="currentTab = 'multimeter'"
+        :class="currentTab === 'multimeter' ? 'bg-blue-600/20 text-blue-400 border-blue-500/40' : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'"
+        class="px-4 py-2 rounded-xl border transition cursor-pointer flex items-center gap-1.5"
+      >
+        <span>⚡</span>
+        <span>Mesures Électriques</span>
+      </button>
+
+      <button 
+        @click="currentTab = 'dtc'"
+        :class="currentTab === 'dtc' ? 'bg-blue-600/20 text-blue-400 border-blue-500/40' : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'"
+        class="px-4 py-2 rounded-xl border transition cursor-pointer flex items-center gap-1.5"
+      >
+        <span>📖</span>
+        <span>DTC Hors-Ligne</span>
+      </button>
+    </nav>
+
+    <!-- ONGLET 1 : DIAGNOSTIC IA -->
+    <section v-if="currentTab === 'diag'" class="space-y-6">
+
+      <!-- Raccourcis Rapides -->
+      <div class="flex items-center gap-2 text-xs overflow-x-auto pb-1 no-scrollbar">
+        <span class="text-slate-500 shrink-0">Exemples rapides :</span>
+        <button 
+          v-for="ex in quickExamples" 
+          :key="ex.label"
+          @click="loadExample(ex)"
+          class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 hover:border-slate-700 px-3 py-1 rounded-lg shrink-0 transition text-[11px] cursor-pointer"
+        >
+          {{ ex.label }}
         </button>
       </div>
 
-      <!-- Onglets de navigation -->
-      <nav class="mt-3 flex gap-2 border-b border-slate-800 pb-2 text-xs font-semibold">
-        <button 
-          @click="currentTab = 'diag'"
-          :class="currentTab === 'diag' ? 'text-blue-400 border-b-2 border-blue-500 pb-1' : 'text-slate-400 hover:text-slate-200'"
-          class="transition cursor-pointer"
-        >
-          🔍 Diagnostic IA
-        </button>
-        <button 
-          @click="currentTab = 'dtc'"
-          :class="currentTab === 'dtc' ? 'text-blue-400 border-b-2 border-blue-500 pb-1' : 'text-slate-400 hover:text-slate-200'"
-          class="transition cursor-pointer"
-        >
-          📖 DTC Hors-Ligne
-        </button>
-      </nav>
-    </header>
+      <!-- Formulaire de saisie -->
+      <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Véhicule *</label>
+          <input 
+            v-model="vehicle" 
+            @input="savePersistentData"
+            type="text" 
+            placeholder="Ex : Toyota Yaris 3 Hybride, Renault Clio 4 1.5 dCi..." 
+            class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+          />
+        </div>
 
-    <!-- Contenu Principal -->
-    <main class="p-4 space-y-4 flex-1">
-
-      <!-- VUE DIAGNOSTIC IA -->
-      <section v-if="currentTab === 'diag'" class="space-y-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3.5 shadow-md">
-          
-          <!-- Véhicule avec persistance -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Véhicule *</label>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Code Défaut (DTC) *</label>
+              <span v-if="dtcError" class="text-[10px] text-amber-400 font-medium">{{ dtcError }}</span>
+            </div>
             <input 
-              v-model="vehicle" 
-              @input="savePersistentData"
+              v-model="dtcCode" 
+              @input="onDtcInput"
               type="text" 
-              placeholder="Ex : Toyota Yaris 3 Hybride, BMW E36 320i..." 
-              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+              maxlength="5"
+              placeholder="Ex : P0300, C1252, U0100..." 
+              :class="dtcError ? 'border-amber-500 focus:border-amber-500' : 'border-slate-700 focus:border-blue-500'"
+              class="w-full uppercase font-mono bg-slate-950 border rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition"
             />
           </div>
 
-          <!-- Code DTC avec validation stricte -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Code DTC *</label>
-                <span v-if="dtcError" class="text-[10px] text-amber-400 font-medium">{{ dtcError }}</span>
-              </div>
-              <input 
-                v-model="dtcCode" 
-                @input="onDtcInput"
-                type="text" 
-                maxlength="5"
-                placeholder="Ex : P0300, C1252..." 
-                :class="dtcError ? 'border-amber-500 focus:border-amber-500' : 'border-slate-700 focus:border-blue-500'"
-                class="w-full uppercase font-mono bg-slate-950 border rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition"
-              />
-            </div>
-
-            <!-- Symptômes avec persistance -->
-            <div>
-              <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Symptômes</label>
-              <input 
-                v-model="symptoms" 
-                @input="savePersistentData"
-                type="text" 
-                placeholder="Ex : Voyant ABS, volant lourd..." 
-                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
-              />
-            </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Symptômes observés</label>
+            <input 
+              v-model="symptoms" 
+              @input="savePersistentData"
+              type="text" 
+              placeholder="Ex : Pédale dure, ralenti instable, fumée..." 
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+            />
           </div>
-
-          <!-- Bouton Diagnostic -->
-          <button 
-            @click="startDiagnostic" 
-            :disabled="isLoading || !isFormValid"
-            :class="(!isFormValid || isLoading) ? 'opacity-50 cursor-not-allowed bg-slate-800 text-slate-400 border border-slate-700' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg cursor-pointer'"
-            class="w-full py-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
-          >
-            <span v-if="isLoading">⏳ Analyse en cours...</span>
-            <span v-else>🚀 Lancer le diagnostic</span>
-          </button>
         </div>
 
-        <!-- Rapport Technique -->
-        <article v-if="report" class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-4 shadow-xl">
-          
-          <!-- Statut / Gravité -->
-          <div class="p-3 rounded-xl border bg-amber-950/30 border-amber-800/60 text-amber-300 space-y-1">
-            <h2 class="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
-              <span>⚠️</span>
-              <span>{{ report.severity_title || 'Analyse système' }}</span>
-            </h2>
-            <p class="text-[11px] text-amber-200/90 leading-relaxed">
-              {{ report.severity_desc }}
-            </p>
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Photo écran valise diag, pièce, fuite (optionnel)</label>
+          <input 
+            type="file" 
+            accept="image/*"
+            class="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 cursor-pointer bg-slate-950 border border-slate-800 rounded-xl p-1.5"
+          />
+        </div>
+
+        <button 
+          @click="startDiagnostic" 
+          :disabled="isLoading || !isFormValid"
+          :class="(!isFormValid || isLoading) ? 'opacity-50 cursor-not-allowed bg-slate-800 text-slate-400 border border-slate-700' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg cursor-pointer'"
+          class="w-full py-3.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
+        >
+          <span v-if="isLoading">⏳ Analyse en cours...</span>
+          <span v-else>🚀 Lancer le diagnostic</span>
+        </button>
+      </div>
+
+      <!-- RAPPORT TECHNIQUE -->
+      <article v-if="report" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-2xl print-border">
+        
+        <!-- En-tête Statut / Gravité -->
+        <div class="p-4 rounded-xl border bg-amber-950/40 border-amber-700/60 text-amber-200 space-y-1">
+          <h2 class="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+            <span>⚠️</span>
+            <span>{{ report.severity_title }}</span>
+          </h2>
+          <p class="text-xs text-amber-300/90 leading-relaxed">
+            {{ report.severity_desc }}
+          </p>
+        </div>
+
+        <!-- Titre Rapport & Boutons actions -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+          <div>
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Rapport technique</h3>
+            <p class="text-xs text-slate-400">{{ vehicle }}</p>
           </div>
 
-          <!-- Contrôles Atelier -->
-          <div v-if="report.checks && report.checks.length" class="space-y-2">
-            <div class="flex items-center justify-between text-xs text-slate-300 font-bold border-b border-slate-800 pb-1.5">
-              <span>☑️ CONTRÔLES ATELIER À EFFECTUER</span>
-              <span class="text-[11px] text-blue-400">{{ completedChecksCount }}/{{ report.checks.length }} validé(s)</span>
-            </div>
-            <div class="space-y-1.5">
-              <label 
-                v-for="(chk, idx) in report.checks" 
-                :key="idx" 
-                class="flex items-start gap-2.5 p-2 rounded-xl bg-slate-950/60 border border-slate-800/80 cursor-pointer hover:border-slate-700 transition"
-              >
-                <input type="checkbox" v-model="chk.done" class="mt-0.5 rounded border-slate-700 text-blue-600 focus:ring-0">
-                <span :class="chk.done ? 'line-through text-slate-500' : 'text-slate-300'" class="text-xs leading-snug">
-                  {{ chk.label }}
-                </span>
-              </label>
-            </div>
-          </div>
-
-          <!-- Analyse Technique -->
-          <div class="space-y-1.5 text-xs">
-            <h3 class="font-bold text-white uppercase tracking-wider text-[11px]">Analyse technique</h3>
-            <p class="text-slate-300 leading-relaxed bg-slate-950 p-3 rounded-xl border border-slate-800">
-              {{ report.technical_analysis }}
-            </p>
-          </div>
-
-          <!-- Causes Probables -->
-          <div class="space-y-1.5 text-xs">
-            <h3 class="font-bold text-white uppercase tracking-wider text-[11px]">Causes probables</h3>
-            <ul class="space-y-1 bg-slate-950 p-3 rounded-xl border border-slate-800 text-slate-300">
-              <li v-for="(cause, idx) in report.causes" :key="idx" class="flex items-start gap-1.5 text-[11px]">
-                <span class="text-blue-400">•</span>
-                <span><strong>{{ cause.title }} :</strong> {{ cause.detail }}</span>
-              </li>
-            </ul>
-          </div>
-
-          <!-- Protocole Électrique / Mécanique -->
-          <div class="space-y-1.5 text-xs">
-            <h3 class="font-bold text-white uppercase tracking-wider text-[11px]">Protocole de contrôle détaillé</h3>
-            <div class="space-y-2 bg-slate-950 p-3 rounded-xl border border-slate-800 text-slate-300 text-[11px]">
-              <div v-for="(step, idx) in report.steps" :key="idx" class="space-y-0.5">
-                <p class="font-bold text-blue-400">{{ idx + 1 }}. {{ step.title }} :</p>
-                <p class="text-slate-300 pl-3 leading-relaxed">{{ step.instruction }}</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Boutons de Partage -->
-          <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
+          <div class="flex items-center gap-2 no-print">
             <button 
               @click="shareReportWhatsApp"
-              type="button"
-              class="flex items-center justify-center gap-1.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition"
+              class="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer"
             >
               <span>💬 WhatsApp</span>
             </button>
             <button 
               @click="exportPdf"
-              type="button"
-              class="flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition"
+              class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer"
             >
-              <span>📄 Imprimer / PDF</span>
+              <span>📄 PDF</span>
+            </button>
+            <button 
+              @click="copyReport"
+              class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>📋 Copier</span>
             </button>
           </div>
-        </article>
-      </section>
+        </div>
 
-      <!-- VUE BASE DTC HORS-LIGNE -->
-      <section v-if="currentTab === 'dtc'" class="space-y-3">
-        <input 
-          v-model="dtcSearch" 
-          type="text" 
-          placeholder="Rechercher un code (ex: P0300, C1252)..." 
-          class="w-full uppercase font-mono bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-        />
+        <!-- Contrôles Atelier -->
+        <div v-if="report.checks && report.checks.length" class="space-y-3">
+          <div class="flex items-center justify-between text-xs text-slate-300 font-bold border-b border-slate-800/80 pb-2">
+            <span class="flex items-center gap-1.5">☑️ CONTRÔLES ATELIER À EFFECTUER</span>
+            <span class="text-blue-400">{{ completedChecksCount }}/{{ report.checks.length }} validé(s)</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <label 
+              v-for="(chk, idx) in report.checks" 
+              :key="idx" 
+              class="flex items-start gap-2.5 p-3 rounded-xl bg-slate-950 border border-slate-800/80 cursor-pointer hover:border-slate-700 transition"
+            >
+              <input type="checkbox" v-model="chk.done" class="mt-0.5 rounded border-slate-700 text-blue-600 focus:ring-0">
+              <span :class="chk.done ? 'line-through text-slate-500' : 'text-slate-300'" class="text-xs leading-snug">
+                {{ chk.label }}
+              </span>
+            </label>
+          </div>
+        </div>
 
+        <!-- Analyse Technique -->
+        <div class="space-y-2">
+          <h4 class="text-xs font-bold text-white uppercase tracking-wider">Analyse technique</h4>
+          <p class="text-xs text-slate-300 leading-relaxed bg-slate-950 p-4 rounded-xl border border-slate-800">
+            {{ report.technical_analysis }}
+          </p>
+        </div>
+
+        <!-- Causes Probables -->
+        <div class="space-y-2">
+          <h4 class="text-xs font-bold text-white uppercase tracking-wider">Causes probables</h4>
+          <ul class="space-y-2 bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <li v-for="(cause, idx) in report.causes" :key="idx" class="flex items-start gap-2 text-xs text-slate-300">
+              <span class="text-blue-400 font-bold">•</span>
+              <span><strong>{{ cause.title }} :</strong> {{ cause.detail }}</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Protocole Détaillé -->
+        <div class="space-y-2">
+          <h4 class="text-xs font-bold text-white uppercase tracking-wider">Protocole de contrôle électrique/mécanique détaillé</h4>
+          <div class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <div v-for="(step, idx) in report.steps" :key="idx" class="space-y-1">
+              <p class="text-xs font-bold text-blue-400">{{ idx + 1 }}. {{ step.title }} :</p>
+              <p class="text-xs text-slate-300 pl-4 leading-relaxed">{{ step.instruction }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pièces Suspectes -->
+        <div v-if="report.suspect_parts && report.suspect_parts.length" class="space-y-2">
+          <h4 class="text-xs font-bold text-white uppercase tracking-wider">Pièces suspectes</h4>
+          <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <li v-for="(part, idx) in report.suspect_parts" :key="idx" class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 flex items-center gap-2">
+              <span class="text-slate-500">•</span>
+              <span>{{ part }}</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Liens Trouver les Pièces -->
+        <div class="space-y-2 pt-2 border-t border-slate-800 no-print">
+          <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span>🛒</span>
+            <span>Trouver les pièces pour ce véhicule</span>
+          </h4>
+          <div class="flex flex-wrap gap-2">
+            <a :href="getPartsUrl('oscaro')" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 transition">Oscaro ↗</a>
+            <a :href="getPartsUrl('autodoc')" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 transition">Auto-Doc ↗</a>
+            <a :href="getPartsUrl('amazon')" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 transition">Amazon Pièces ↗</a>
+          </div>
+        </div>
+
+        <!-- Matériel Recommandé -->
+        <div class="space-y-2 pt-2 border-t border-slate-800 no-print">
+          <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span>🧰</span>
+            <span>Matériel recommandé pour les contrôles</span>
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 flex items-center gap-2">
+              <span>⚡</span>
+              <span>Multimètre automobile</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 flex items-center gap-2">
+              <span>📟</span>
+              <span>Scanner OBD-II</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bloc Soutien / Don -->
+        <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 no-print">
+          <span>Cet outil vous a fait gagner du temps ? Soutenez l'hébergement et le maintien pour qu'il reste 100% gratuit.</span>
+          <a href="https://buymeacoffee.com" target="_blank" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl shrink-0 transition">
+            ☕ Offrir un café à l'atelier
+          </a>
+        </div>
+
+      </article>
+
+      <!-- Historique Récent -->
+      <section v-if="history.length" class="space-y-2 no-print">
+        <div class="flex items-center justify-between text-xs text-slate-400">
+          <span class="font-bold uppercase tracking-wider text-[11px]">Historique récent</span>
+          <button @click="clearHistory" class="hover:text-slate-200">Effacer l'historique</button>
+        </div>
         <div class="space-y-2">
           <div 
-            v-for="d in filteredDtcList" 
-            :key="d.code" 
-            class="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-1"
+            v-for="(h, idx) in history" 
+            :key="idx"
+            @click="restoreHistory(h)"
+            class="p-3 bg-slate-900 hover:bg-slate-800/80 border border-slate-800 rounded-xl flex items-center justify-between cursor-pointer transition text-xs"
           >
-            <div class="flex items-center justify-between">
-              <span class="font-mono font-bold text-blue-400 text-xs">{{ d.code }}</span>
-              <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">{{ d.system }}</span>
+            <div>
+              <span class="font-bold text-white">{{ h.vehicle }}</span>
+              <span class="ml-2 font-mono bg-blue-950 border border-blue-800 text-blue-300 px-1.5 py-0.5 rounded text-[10px]">{{ h.dtc }}</span>
             </div>
-            <p class="text-xs text-slate-200">{{ d.label }}</p>
+            <span class="text-slate-500 text-[11px]">{{ h.date }}</span>
           </div>
         </div>
       </section>
 
-    </main>
+    </section>
 
-    <!-- Modal Installation PWA (iOS / Android) -->
+    <!-- ONGLET 2 : MESURES ÉLECTRIQUES (VOLTMÈTRE / MULTIMÈTRE) -->
+    <section v-if="currentTab === 'multimeter'" class="space-y-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">⚡</span>
+          <div>
+            <h2 class="text-sm font-bold text-white uppercase tracking-wider">Aide aux Mesures Multimètre & Schémas</h2>
+            <p class="text-xs text-slate-400">Valeurs cibles et méthodes de mesure pour le diagnostic électrique</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+          <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+            <h3 class="text-xs font-bold text-blue-400">Batterie 12V (Tension au repos)</h3>
+            <ul class="text-xs space-y-1 text-slate-300">
+              <li>• <strong>12,6 V à 12,8 V :</strong> Batterie chargée à 100%</li>
+              <li>• <strong>12,2 V à 12,4 V :</strong> Charge partielle (50-75%)</li>
+              <li>• <strong>&lt; 12,0 V :</strong> Batterie déchargée ou élément HS</li>
+            </ul>
+          </div>
+
+          <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+            <h3 class="text-xs font-bold text-blue-400">Circuit de Charge (Alternateur / Mode READY)</h3>
+            <ul class="text-xs space-y-1 text-slate-300">
+              <li>• <strong>13,8 V à 14,5 V :</strong> Charge normale régulée</li>
+              <li>• <strong>&gt; 14,8 V :</strong> Surtension (régulateur défaillant)</li>
+              <li>• <strong>&lt; 13,5 V :</strong> Sous-charge (alternateur / convertisseur)</li>
+            </ul>
+          </div>
+
+          <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+            <h3 class="text-xs font-bold text-blue-400">Ligne de Masse (Chute de tension)</h3>
+            <ul class="text-xs space-y-1 text-slate-300">
+              <li>• Mesure entre borne négative batterie et bloc moteur</li>
+              <li>• <strong>Valeur cible :</strong> &lt; 0,2 V sous démarreur / consommateur</li>
+              <li>• Si &gt; 0,3 V : tresse de masse oxydée ou desserrée</li>
+            </ul>
+          </div>
+
+          <div class="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+            <h3 class="text-xs font-bold text-blue-400">Bus CAN High & CAN Low</h3>
+            <ul class="text-xs space-y-1 text-slate-300">
+              <li>• <strong>Résistance :</strong> 60 Ω aux bornes 6 et 14 prise OBD (contact coupé)</li>
+              <li>• <strong>CAN H :</strong> ~2,5 V à 3,5 V (en activité)</li>
+              <li>• <strong>CAN L :</strong> ~1,5 V à 2,5 V (en activité)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ONGLET 3 : BASE DTC HORS-LIGNE -->
+    <section v-if="currentTab === 'dtc'" class="space-y-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-xl">
+        <input 
+          v-model="dtcSearch" 
+          type="text" 
+          placeholder="Rechercher un code (ex: P0300, C1252)..." 
+          class="w-full uppercase font-mono bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+        />
+
+        <div class="space-y-2 pt-2">
+          <div 
+            v-for="d in filteredDtcList" 
+            :key="d.code" 
+            class="p-3 bg-slate-950 border border-slate-800/80 rounded-xl space-y-1"
+          >
+            <div class="flex items-center justify-between">
+              <span class="font-mono font-bold text-blue-400 text-xs">{{ d.code }}</span>
+              <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded">{{ d.system }}</span>
+            </div>
+            <p class="text-xs text-slate-300">{{ d.label }}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Modal Instructions Installation PWA -->
     <div 
       v-if="showInstallModal" 
-      class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+      class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 no-print"
     >
       <div class="bg-slate-900 border border-slate-700 rounded-t-3xl sm:rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
         <div class="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -249,7 +415,7 @@
             <span class="text-xl">📲</span>
             <h3 class="text-sm font-bold text-white">Installer iDiagAuto</h3>
           </div>
-          <button @click="showInstallModal = false" class="text-slate-400 hover:text-white text-base">✕</button>
+          <button @click="showInstallModal = false" class="text-slate-400 hover:text-white text-base cursor-pointer">✕</button>
         </div>
 
         <div class="text-xs text-slate-300 space-y-3">
