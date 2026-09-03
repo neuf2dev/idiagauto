@@ -109,14 +109,12 @@
       <!-- Cadre Formulaire -->
       <div class="bg-[#0b1329] border border-slate-800/90 rounded-2xl p-6 space-y-4 shadow-xl no-print">
         
-        <!-- Véhicule avec suggestions automatiques (datalist) -->
+        <!-- Véhicule -->
         <div>
-          <div class="flex items-center justify-between mb-1.5">
-            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">VÉHICULE *</label>
-            <button v-if="vehicle" @click="vehicle = ''" type="button" class="text-[10px] text-slate-500 hover:text-slate-300 cursor-pointer">Effacer</button>
-          </div>
+          <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">VÉHICULE *</label>
           <input 
             v-model="vehicle" 
+            autocomplete="off"
             type="text" 
             list="vehicles-history"
             placeholder="Ex : BMW Série 3 E36 320i 1998, Opel Meriva 1.7 CDTI..." 
@@ -137,6 +135,7 @@
             <input 
               v-model="dtcCode" 
               @input="onDtcInput"
+              autocomplete="off"
               type="text" 
               maxlength="5"
               placeholder="EX : P0340, C1252, DF053..." 
@@ -149,6 +148,7 @@
             <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">SYMPTÔMES OBSERVÉS</label>
             <input 
               v-model="symptoms" 
+              autocomplete="off"
               type="text" 
               placeholder="Ex : Bruit à chaud, ratés, fumée, calage..." 
               class="w-full bg-[#080d1a] border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition"

@@ -2,14 +2,14 @@ const { createApp, ref, computed, onMounted } = Vue;
 
 createApp({
   setup() {
-    // Nettoyage immédiat des anciens résidus de persistance
+    // Purge de tout ancien stockage persistant
     localStorage.removeItem('idiag_vehicle');
     localStorage.removeItem('idiag_dtc');
     localStorage.removeItem('idiag_symptoms');
 
     const currentTab = ref('diag');
 
-    // Formulaire totalement vide au démarrage
+    // Variables réactives démarrant systématiquement à vide
     const vehicle = ref('');
     const dtcCode = ref('');
     const symptoms = ref('');
@@ -19,7 +19,7 @@ createApp({
     // Rapport généré
     const report = ref(null);
 
-    // Suggestions de véhicules (datalist)
+    // Suggestions de véhicules pour le menu déroulant (datalist)
     const vehicleHistory = ref([
       'BMW Série 3 E36 320i 1998',
       'Toyota Yaris 3 Hybride',
@@ -87,7 +87,7 @@ createApp({
       return dtcDatabase.value.filter(d => d.code.includes(q) || d.label.toUpperCase().includes(q));
     });
 
-    // Lancement du diagnostic direct
+    // Lancement du diagnostic
     const startDiagnostic = () => {
       const curVeh = (vehicle.value || '').trim();
       const curCode = (dtcCode.value || '').toUpperCase().trim();
@@ -191,6 +191,12 @@ createApp({
     };
 
     onMounted(() => {
+      // Réinitialisation absolue des formulaires à l'affichage
+      vehicle.value = '';
+      dtcCode.value = '';
+      symptoms.value = '';
+      dtcError.value = '';
+
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(console.error);
       }
