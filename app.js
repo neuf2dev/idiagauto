@@ -33,6 +33,7 @@ createApp({
       { code: 'P0190', system: 'Injection', label: 'Capteur de pression de la rampe de distribution - panne du circuit' },
       { code: 'DF053', system: 'Renault / Dacia', label: 'Fonction régulation de pression rail' },
       { code: 'C1252', system: 'Freinage / Hybride', label: 'Circuit du moteur de pompe d\'assistance de freinage' },
+      { code: 'C1522', system: 'Direction assistée', label: 'Moteur d\'assistance de direction électrique EPS' },
       { code: 'C1528', system: 'Direction assistée', label: 'Anomalie rotation / signal capteur moteur EPS' },
       { code: 'U0100', system: 'Réseau CAN', label: 'Perte de communication avec le calculateur moteur (ECM/PCM)' }
     ]);
@@ -48,7 +49,7 @@ createApp({
     };
 
     const addToHistory = (item, listRef, storageKey) => {
-      const cleanItem = item.trim();
+      const cleanItem = (item || '').trim();
       if (!cleanItem) return;
       if (!listRef.value.includes(cleanItem)) {
         listRef.value.unshift(cleanItem);
@@ -58,7 +59,7 @@ createApp({
     };
 
     const onDtcInput = () => {
-      dtcCode.value = dtcCode.value.toUpperCase().trim();
+      dtcCode.value = (dtcCode.value || '').toUpperCase().trim();
       const val = dtcCode.value;
       savePersistentData();
 
@@ -67,13 +68,13 @@ createApp({
         return;
       }
 
-      const isStandardDtc = /^[PCBU][0-9A-F]{4}$/.test(val);
-      const isRenaultDf = /^DF[0-9A-F]{3}$/.test(val);
+      const isStandardDtc = /^[PCBU][0-9A-F]{4}$/i.test(val);
+      const isRenaultDf = /^DF[0-9A-F]{3}$/i.test(val);
 
       if (val.length < 5) {
         dtcError.value = `5 caractères requis (${val.length}/5)`;
       } else if (!isStandardDtc && !isRenaultDf) {
-        dtcError.value = 'Code invalide (ex: P0340 ou DF053)';
+        dtcError.value = 'Format attendu : ex: P0340, C1252, DF053';
       } else {
         dtcError.value = '';
       }
@@ -88,10 +89,8 @@ createApp({
     };
 
     const isFormValid = computed(() => {
-      const val = dtcCode.value;
-      const isStandardDtc = /^[PCBU][0-9A-F]{4}$/.test(val);
-      const isRenaultDf = /^DF[0-9A-F]{3}$/.test(val);
-      return vehicle.value.trim().length >= 2 && (isStandardDtc || isRenaultDf);
+      const val = (dtcCode.value || '').trim();
+      return (vehicle.value || '').trim().length >= 2 && val.length === 5;
     });
 
     const completedChecksCount = computed(() => {
@@ -106,16 +105,22 @@ createApp({
     });
 
     const startDiagnostic = () => {
-      if (!isFormValid.value) return;
+      const code = (dtcCode.value || '').toUpperCase().trim();
+      const currentVehicle = (vehicle.value || '').trim();
+
+      if (!code || code.length < 5) {
+        dtcError.value = '5 caractères requis';
+        return;
+      }
+
       isLoading.value = true;
       savePersistentData();
 
-      addToHistory(vehicle.value, vehicleHistory, 'idiag_vehicle_history');
-      addToHistory(dtcCode.value, dtcHistory, 'idiag_dtc_history');
+      addToHistory(currentVehicle, vehicleHistory, 'idiag_vehicle_history');
+      addToHistory(code, dtcHistory, 'idiag_dtc_history');
 
       setTimeout(() => {
-        const code = dtcCode.value;
-        const isToyotaHybride = vehicle.value.toLowerCase().includes('toyota') || vehicle.value.toLowerCase().includes('yaris');
+        const isToyotaHybride = currentVehicle.toLowerCase().includes('toyota') || currentVehicle.toLowerCase().includes('yaris');
 
         if (code === 'C1252' || (code.startsWith('C12') && isToyotaHybride)) {
           report.value = {
@@ -127,14 +132,14 @@ createApp({
               { label: 'Tester la continuité du relais de pompe de freinage', done: false },
               { label: 'Vérifier l\'absence de fuite au niveau de l\'accumulateur de pression', done: false }
             ],
-            technical_analysis: `Le code DTC ${code} sur ${vehicle.value} signale une coupure d'alimentation ou un blocage du moteur de pompe d'assistance hydraulique. Sur ce véhicule, l'assistance est assurée par un groupe électropompe haute pression avec accumulateur de gaz.`,
+            technical_analysis: `Le code DTC ${code} sur ${currentVehicle} signale une coupure d'alimentation ou un blocage du moteur de pompe d'assistance hydraulique. Sur ce véhicule, l'assistance est assurée par un groupe électropompe haute pression avec accumulateur de gaz.`,
             causes: [
               { title: 'Pompe de frein / Accumulateur HS', detail: 'Usure des charbons du moteur électrique de pompe ou fuite interne.' },
               { title: 'Batterie 12V faible', detail: 'Sous-tension au démarrage coupant le calculateur de freinage.' },
               { title: 'Relais ABS défaillant', detail: 'Coupure d\'alimentation sous fort appel d\'intensité.' }
             ],
             steps: [
-              { title: 'Contrôle batterie 12V', instruction: 'Mesurer au multimètre : &ge; 12,6 V au repos, entre 13,8 V et 14,5 V en mode READY.' },
+              { title: 'Contrôle batterie 12V', instruction: 'Mesurer au multimètre : ≥ 12,6 V au repos, entre 13,8 V et 14,5 V en mode READY.' },
               { title: 'Test actionneur valise', instruction: 'Activer manuellement le moteur de pompe via la valise pour écouter s\'il tourne.' },
               { title: 'Lecture pression accumulateur', instruction: 'Vérifier la pression dans les paramètres en direct (doit dépasser 3,2 MPa).' }
             ],
@@ -153,7 +158,7 @@ createApp({
               { label: 'Vérifier le fusible associé au circuit', done: false },
               { label: 'Inspecter visuellement l\'état du faisceau et des connecteurs', done: false }
             ],
-            technical_analysis: `Le code DTC ${code} indique une divergence de signal ou une absence de réponse dans le circuit concerné sur ${vehicle.value}.`,
+            technical_analysis: `Le code DTC ${code} indique une divergence de signal ou une absence de réponse dans le circuit concerné sur ${currentVehicle}.`,
             causes: [
               { title: 'Faisceau / Connectique', detail: 'Oxydation, mauvais contact ou fil coupé/pincé.' },
               { title: 'Composant / Capteur défaillant', detail: 'Composant hors tolérances ou en court-circuit.' }
@@ -170,7 +175,7 @@ createApp({
         }
 
         isLoading.value = false;
-      }, 500);
+      }, 300);
     };
 
     const shareReportWhatsApp = () => {
