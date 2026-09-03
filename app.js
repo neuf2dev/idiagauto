@@ -4,21 +4,21 @@ createApp({
   setup() {
     const currentTab = ref('diag');
 
-    // Persistance véhicule & symptômes
+    // Persistance
     const vehicle = ref(localStorage.getItem('idiag_vehicle') || '');
     const symptoms = ref(localStorage.getItem('idiag_symptoms') || '');
     const dtcCode = ref('');
     const dtcError = ref('');
     const isLoading = ref(false);
 
-    // Exemples d'origine conformes à la capture 480
+    // Données des exemples rapides (avec label et code séparés)
     const quickExamples = [
-      { label: 'BMW 320i E36', model: 'BMW 320i E36', code: 'P0340', vehicle: 'BMW Série 3 E36 320i 1998', dtc: 'P0340', symptoms: 'Manque de reprise, ralenti instable, démarrage difficile' },
-      { label: 'Opel Meriva 1.7 CDTI', model: 'Opel Meriva 1.7 CDTI', code: 'P0190', vehicle: 'Opel Meriva 1.7 CDTI', dtc: 'P0190', symptoms: 'Coupure moteur sous forte charge, voyant clé' },
-      { label: 'Renault Clio 3 1.5 dCi', model: 'Renault Clio 3 1.5 dCi', code: 'DF053', vehicle: 'Renault Clio 3 1.5 dCi', dtc: 'DF053', symptoms: 'Message injection à contrôler' }
+      { label: 'BMW 320i E36', code: 'P0340', vehicle: 'BMW Série 3 E36 320i 1998', symptoms: 'Manque de reprise, ralenti instable, démarrage difficile' },
+      { label: 'Opel Meriva 1.7 CDTI', code: 'P0190', vehicle: 'Opel Meriva 1.7 CDTI', symptoms: 'Coupure moteur sous forte charge, voyant clé' },
+      { label: 'Renault Clio 3 1.5 dCi', code: 'DF053', vehicle: 'Renault Clio 3 1.5 dCi', symptoms: 'Message injection à contrôler' }
     ];
 
-    // Base DTC locale pour l'onglet 3
+    // Base DTC locale
     const dtcSearch = ref('');
     const dtcDatabase = ref([
       { code: 'P0300', system: 'Moteur', label: 'Ratés d\'allumage multiples / cylindres aléatoires détectés' },
@@ -30,7 +30,7 @@ createApp({
       { code: 'U0100', system: 'Réseau CAN', label: 'Perte de communication avec le calculateur moteur (ECM/PCM)' }
     ]);
 
-    // PWA Prompt
+    // PWA
     const installPrompt = ref(null);
     const showInstallModal = ref(false);
 
@@ -48,14 +48,13 @@ createApp({
         return;
       }
 
-      // Accepte format standard P/C/B/U + 4 hex ou codes constructeur type DFxxx
       const isStandardDtc = /^[PCBU][0-9A-F]{4}$/.test(val);
       const isRenaultDf = /^DF[0-9A-F]{3}$/.test(val);
 
       if (val.length < 5) {
         dtcError.value = `5 caractères requis (${val.length}/5)`;
       } else if (!isStandardDtc && !isRenaultDf) {
-        dtcError.value = 'Code invalide (ex: P0300 ou DF053)';
+        dtcError.value = 'Code invalide (ex: P0340 ou DF053)';
       } else {
         dtcError.value = '';
       }
@@ -63,7 +62,7 @@ createApp({
 
     const loadExample = (ex) => {
       vehicle.value = ex.vehicle;
-      dtcCode.value = ex.dtc;
+      dtcCode.value = ex.code;
       symptoms.value = ex.symptoms;
       dtcError.value = '';
       savePersistentData();

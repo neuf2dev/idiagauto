@@ -24,7 +24,7 @@
 <body class="text-slate-100 min-h-screen font-sans antialiased selection:bg-blue-600 selection:text-white py-10 px-4">
   <div id="app" class="max-w-2xl mx-auto space-y-6">
 
-    <!-- En-tête centré (Capture 480) -->
+    <!-- En-tête centré -->
     <header class="flex flex-col items-center text-center space-y-3">
       <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-950/80 border border-blue-800/60 text-blue-400 text-xs font-semibold shadow-sm">
         <span>⚡</span>
@@ -40,7 +40,7 @@
         </p>
       </div>
 
-      <!-- Bouton vert d'installation (Capture 480) -->
+      <!-- Bouton vert d'installation -->
       <button 
         @click="handleInstallClick"
         type="button"
@@ -51,7 +51,7 @@
       </button>
     </header>
 
-    <!-- 3 Onglets conformes à la Capture 480 -->
+    <!-- 3 Onglets -->
     <nav class="flex justify-center gap-6 sm:gap-8 border-b border-slate-800 text-xs font-semibold">
       <button 
         @click="currentTab = 'diag'"
@@ -81,30 +81,31 @@
       </button>
     </nav>
 
-    <!-- VUE 1 : DIAGNOSTIC IA (Capture 480) -->
+    <!-- VUE 1 : DIAGNOSTIC IA -->
     <section v-if="currentTab === 'diag'" class="space-y-4">
 
-      <!-- Exemples rapides conformes 480 -->
+      <!-- Exemples rapides -->
       <div class="space-y-2">
         <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">EXEMPLES RAPIDES :</span>
         <div class="flex flex-wrap items-center gap-2">
           <button 
-            v-for="ex in quickExamples" 
-            :key="ex.label"
+            v-for="(ex, index) in quickExamples" 
+            :key="index"
             @click="loadExample(ex)"
-            class="bg-[#0b1329] hover:bg-slate-800 text-slate-300 border border-slate-800 px-3 py-1 rounded-lg transition text-xs cursor-pointer flex items-center gap-1.5"
+            type="button"
+            class="bg-[#0b1329] hover:bg-slate-800 text-slate-300 border border-slate-800 px-3 py-1.5 rounded-lg transition text-xs cursor-pointer flex items-center gap-1.5"
           >
-            <span>{{ ex.model }}</span>
-            <span>·</span>
-            <span class="text-blue-400 font-mono">{{ ex.code }}</span>
+            <span>{{ ex.label }}</span>
+            <span class="text-slate-500">·</span>
+            <span class="text-blue-400 font-mono font-semibold">{{ ex.code }}</span>
           </button>
         </div>
       </div>
 
-      <!-- Cadre Formulaire (Capture 480) -->
+      <!-- Cadre Formulaire -->
       <div class="bg-[#0b1329] border border-slate-800/90 rounded-2xl p-6 space-y-4 shadow-xl">
         
-        <!-- Véhicule (persistant) -->
+        <!-- Véhicule -->
         <div>
           <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">VÉHICULE *</label>
           <input 
@@ -146,7 +147,7 @@
           </div>
         </div>
 
-        <!-- Zone Photo stylisée (Capture 480) -->
+        <!-- Zone Photo stylisée -->
         <div>
           <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
             PHOTO (ÉCRAN VALISE DIAG, BOUGIE, FUITE, COURROIE...) <span class="text-slate-500 normal-case">(optionnel)</span>
@@ -158,7 +159,7 @@
           </label>
         </div>
 
-        <!-- Bouton Lancer le diagnostic (Capture 480) -->
+        <!-- Bouton Lancer le diagnostic -->
         <button 
           @click="startDiagnostic" 
           :disabled="isLoading || !isFormValid"
