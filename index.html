@@ -109,12 +109,14 @@
       <!-- Cadre Formulaire -->
       <div class="bg-[#0b1329] border border-slate-800/90 rounded-2xl p-6 space-y-4 shadow-xl no-print">
         
-        <!-- Véhicule avec complétion -->
+        <!-- Véhicule avec suggestions automatiques (datalist) -->
         <div>
-          <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">VÉHICULE *</label>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">VÉHICULE *</label>
+            <button v-if="vehicle" @click="vehicle = ''" type="button" class="text-[10px] text-slate-500 hover:text-slate-300 cursor-pointer">Effacer</button>
+          </div>
           <input 
             v-model="vehicle" 
-            @input="savePersistentData"
             type="text" 
             list="vehicles-history"
             placeholder="Ex : BMW Série 3 E36 320i 1998, Opel Meriva 1.7 CDTI..." 
@@ -129,7 +131,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <div class="flex items-center justify-between mb-1.5">
-              <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">CODE DÉFAUT (DTC)</label>
+              <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">CODE DÉFAUT (DTC) *</label>
               <span v-if="dtcError" class="text-[10px] text-amber-400 font-medium">{{ dtcError }}</span>
             </div>
             <input 
@@ -137,21 +139,16 @@
               @input="onDtcInput"
               type="text" 
               maxlength="5"
-              list="dtc-history"
-              placeholder="EX : P0340, P0170, DF154..." 
+              placeholder="EX : P0340, C1252, DF053..." 
               :class="dtcError ? 'border-amber-500 focus:border-amber-500' : 'border-slate-800 focus:border-blue-500'"
               class="w-full uppercase font-mono bg-[#080d1a] border rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none transition"
             />
-            <datalist id="dtc-history">
-              <option v-for="c in dtcHistory" :key="c" :value="c"></option>
-            </datalist>
           </div>
 
           <div>
             <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">SYMPTÔMES OBSERVÉS</label>
             <input 
               v-model="symptoms" 
-              @input="savePersistentData"
               type="text" 
               placeholder="Ex : Bruit à chaud, ratés, fumée, calage..." 
               class="w-full bg-[#080d1a] border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition"
@@ -174,9 +171,8 @@
         <!-- Bouton Lancer le diagnostic -->
         <button 
           @click="startDiagnostic" 
-          :disabled="isLoading || !isFormValid"
-          :class="(!isFormValid || isLoading) ? 'opacity-50 cursor-not-allowed bg-blue-600/50 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg cursor-pointer'"
-          class="w-full py-3.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
+          type="button"
+          class="w-full py-3.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white shadow-lg cursor-pointer"
         >
           <span v-if="isLoading">⏳ Analyse en cours...</span>
           <span v-else>Lancer le diagnostic</span>
@@ -223,7 +219,7 @@
           </div>
         </div>
 
-        <!-- Contrôles Atelier à effectuer -->
+        <!-- Contrôles Atelier -->
         <div v-if="report.checks && report.checks.length" class="space-y-2">
           <div class="flex items-center justify-between text-xs font-bold border-b border-slate-800/80 pb-2">
             <span class="text-slate-300 flex items-center gap-1.5">☑️ CONTRÔLES ATELIER À EFFECTUER</span>
