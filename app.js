@@ -4,14 +4,17 @@ createApp({
   setup() {
     const currentTab = ref('diag');
 
-    // Persistance des valeurs actuelles
+    // Persistance
     const vehicle = ref(localStorage.getItem('idiag_vehicle') || '');
     const dtcCode = ref(localStorage.getItem('idiag_dtc') || '');
     const symptoms = ref(localStorage.getItem('idiag_symptoms') || '');
     const dtcError = ref('');
     const isLoading = ref(false);
 
-    // Listes d'historique pour l'autocomplétion datalist
+    // Données du Rapport
+    const report = ref(null);
+
+    // Listes d'historique pour autocomplétion
     const vehicleHistory = ref(JSON.parse(localStorage.getItem('idiag_vehicle_history') || '[]'));
     const dtcHistory = ref(JSON.parse(localStorage.getItem('idiag_dtc_history') || '[]'));
 
@@ -38,20 +41,18 @@ createApp({
     const installPrompt = ref(null);
     const showInstallModal = ref(false);
 
-    // Sauvegarde automatique des valeurs dans les champs
     const savePersistentData = () => {
       localStorage.setItem('idiag_vehicle', vehicle.value);
       localStorage.setItem('idiag_dtc', dtcCode.value);
       localStorage.setItem('idiag_symptoms', symptoms.value);
     };
 
-    // Sauvegarde d'un nouvel élément dans l'historique de complétion
     const addToHistory = (item, listRef, storageKey) => {
       const cleanItem = item.trim();
       if (!cleanItem) return;
       if (!listRef.value.includes(cleanItem)) {
         listRef.value.unshift(cleanItem);
-        if (listRef.value.length > 20) listRef.value.pop(); // Garde les 20 plus récents
+        if (listRef.value.length > 20) listRef.value.pop();
         localStorage.setItem(storageKey, JSON.stringify(listRef.value));
       }
     };
@@ -93,6 +94,11 @@ createApp({
       return vehicle.value.trim().length >= 2 && (isStandardDtc || isRenaultDf);
     });
 
+    const completedChecksCount = computed(() => {
+      if (!report.value || !report.value.checks) return 0;
+      return report.value.checks.filter(c => c.done).length;
+    });
+
     const filteredDtcList = computed(() => {
       const q = dtcSearch.value.trim().toUpperCase();
       if (!q) return dtcDatabase.value;
@@ -104,13 +110,82 @@ createApp({
       isLoading.value = true;
       savePersistentData();
 
-      // Enregistre dans l'historique de complétion
       addToHistory(vehicle.value, vehicleHistory, 'idiag_vehicle_history');
       addToHistory(dtcCode.value, dtcHistory, 'idiag_dtc_history');
 
       setTimeout(() => {
+        const code = dtcCode.value;
+        const isToyotaHybride = vehicle.value.toLowerCase().includes('toyota') || vehicle.value.toLowerCase().includes('yaris');
+
+        if (code === 'C1252' || (code.startsWith('C12') && isToyotaHybride)) {
+          report.value = {
+            severity_title: 'DÉFAILLANCE HYDRAULIQUE DE FREINAGE - ARRÊT IMMÉDIAT',
+            severity_desc: 'Chute de pression ou anomalie moteur de pompe hydraulique (Brake Booster). Pédale dure, risque de perte de freinage assisté.',
+            checks: [
+              { label: 'Mesurer la tension de la batterie auxiliaire 12V (repos et mode READY)', done: false },
+              { label: 'Contrôler le fusible de puissance ABS MTR (30A/40A)', done: false },
+              { label: 'Tester la continuité du relais de pompe de freinage', done: false },
+              { label: 'Vérifier l\'absence de fuite au niveau de l\'accumulateur de pression', done: false }
+            ],
+            technical_analysis: `Le code DTC ${code} sur ${vehicle.value} signale une coupure d'alimentation ou un blocage du moteur de pompe d'assistance hydraulique. Sur ce véhicule, l'assistance est assurée par un groupe électropompe haute pression avec accumulateur de gaz.`,
+            causes: [
+              { title: 'Pompe de frein / Accumulateur HS', detail: 'Usure des charbons du moteur électrique de pompe ou fuite interne.' },
+              { title: 'Batterie 12V faible', detail: 'Sous-tension au démarrage coupant le calculateur de freinage.' },
+              { title: 'Relais ABS défaillant', detail: 'Coupure d\'alimentation sous fort appel d\'intensité.' }
+            ],
+            steps: [
+              { title: 'Contrôle batterie 12V', instruction: 'Mesurer au multimètre : &ge; 12,6 V au repos, entre 13,8 V et 14,5 V en mode READY.' },
+              { title: 'Test actionneur valise', instruction: 'Activer manuellement le moteur de pompe via la valise pour écouter s\'il tourne.' },
+              { title: 'Lecture pression accumulateur', instruction: 'Vérifier la pression dans les paramètres en direct (doit dépasser 3,2 MPa).' }
+            ],
+            suspect_parts: [
+              'Bloc pompe hydraulique / Accumulateur de freinage',
+              'Relais moteur ABS / Freinage',
+              'Batterie auxiliaire 12V AGM'
+            ]
+          };
+        } else {
+          report.value = {
+            severity_title: 'ANOMALIE SYSTÈME DÉTECTÉE - VÉRIFICATION NÉCESSAIRE',
+            severity_desc: `Défaut enregistré sous le code ${code}. Un contrôle méthodique du circuit électrique et des actionneurs associés est requis.`,
+            checks: [
+              { label: 'Contrôler l\'état de charge de la batterie 12V', done: false },
+              { label: 'Vérifier le fusible associé au circuit', done: false },
+              { label: 'Inspecter visuellement l\'état du faisceau et des connecteurs', done: false }
+            ],
+            technical_analysis: `Le code DTC ${code} indique une divergence de signal ou une absence de réponse dans le circuit concerné sur ${vehicle.value}.`,
+            causes: [
+              { title: 'Faisceau / Connectique', detail: 'Oxydation, mauvais contact ou fil coupé/pincé.' },
+              { title: 'Composant / Capteur défaillant', detail: 'Composant hors tolérances ou en court-circuit.' }
+            ],
+            steps: [
+              { title: 'Alimentations et masses', instruction: 'Mesurer la présence du 12V et la résistance de masse (< 0,5 Ohm).' },
+              { title: 'Paramètres en direct', instruction: 'Vérifier la cohérence de la valeur mesurée à la valise de diagnostic.' }
+            ],
+            suspect_parts: [
+              'Capteur / Actionneur associé au DTC',
+              'Faisceau électrique et connecteurs'
+            ]
+          };
+        }
+
         isLoading.value = false;
       }, 500);
+    };
+
+    const shareReportWhatsApp = () => {
+      if (!report.value) return;
+      const text = encodeURIComponent(
+        `*Rapport iDiagAuto - ${vehicle.value}*\n` +
+        `Code DTC : ${dtcCode.value}\n` +
+        `Statut : ${report.value.severity_title}\n\n` +
+        `Analyse : ${report.value.technical_analysis}`
+      );
+      window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+    };
+
+    const exportPdf = () => {
+      window.print();
     };
 
     const handleInstallClick = async () => {
@@ -135,7 +210,6 @@ createApp({
         installPrompt.value = e;
       });
 
-      // Valide le code dès l'ouverture s'il était déjà en mémoire
       if (dtcCode.value) {
         onDtcInput();
       }
@@ -148,6 +222,7 @@ createApp({
       dtcCode,
       dtcError,
       isLoading,
+      report,
       quickExamples,
       dtcSearch,
       filteredDtcList,
@@ -158,7 +233,10 @@ createApp({
       onDtcInput,
       loadExample,
       isFormValid,
+      completedChecksCount,
       startDiagnostic,
+      shareReportWhatsApp,
+      exportPdf,
       handleInstallClick
     };
   }

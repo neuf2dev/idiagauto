@@ -19,6 +19,10 @@
     body {
       background-color: #080d1a;
     }
+    @media print {
+      body { background: white !important; color: black !important; }
+      header, nav, .no-print, button { display: none !important; }
+    }
   </style>
 </head>
 <body class="text-slate-100 min-h-screen font-sans antialiased selection:bg-blue-600 selection:text-white py-10 px-4">
@@ -52,7 +56,7 @@
     </header>
 
     <!-- 3 Onglets -->
-    <nav class="flex justify-center gap-6 sm:gap-8 border-b border-slate-800 text-xs font-semibold">
+    <nav class="flex justify-center gap-6 sm:gap-8 border-b border-slate-800 text-xs font-semibold no-print">
       <button 
         @click="currentTab = 'diag'"
         :class="currentTab === 'diag' ? 'text-blue-400 border-b-2 border-blue-500 pb-2.5' : 'text-slate-400 hover:text-slate-200 pb-2.5'"
@@ -85,7 +89,7 @@
     <section v-if="currentTab === 'diag'" class="space-y-4">
 
       <!-- Exemples rapides -->
-      <div class="space-y-2">
+      <div class="space-y-2 no-print">
         <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">EXEMPLES RAPIDES :</span>
         <div class="flex flex-wrap items-center gap-2">
           <button 
@@ -103,9 +107,9 @@
       </div>
 
       <!-- Cadre Formulaire -->
-      <div class="bg-[#0b1329] border border-slate-800/90 rounded-2xl p-6 space-y-4 shadow-xl">
+      <div class="bg-[#0b1329] border border-slate-800/90 rounded-2xl p-6 space-y-4 shadow-xl no-print">
         
-        <!-- Véhicule avec historique datalist -->
+        <!-- Véhicule avec complétion -->
         <div>
           <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">VÉHICULE *</label>
           <input 
@@ -180,6 +184,108 @@
 
       </div>
 
+      <!-- RAPPORT TECHNIQUE GÉNÉRÉ -->
+      <article v-if="report" class="bg-[#0b1329] border border-slate-800/90 rounded-2xl p-6 space-y-5 shadow-2xl">
+        
+        <!-- Alerte Gravité -->
+        <div class="p-4 rounded-xl border bg-amber-950/40 border-amber-800/60 text-amber-300 space-y-1">
+          <h2 class="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+            <span>⚠️</span>
+            <span>{{ report.severity_title }}</span>
+          </h2>
+          <p class="text-xs text-amber-200/90 leading-relaxed">
+            {{ report.severity_desc }}
+          </p>
+        </div>
+
+        <!-- En-tête Rapport & Actions -->
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div>
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Rapport technique</h3>
+            <p class="text-xs text-slate-400">{{ vehicle }} · <span class="font-mono text-blue-400">{{ dtcCode }}</span></p>
+          </div>
+
+          <div class="flex items-center gap-2 no-print">
+            <button 
+              @click="shareReportWhatsApp"
+              type="button"
+              class="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>💬 WhatsApp</span>
+            </button>
+            <button 
+              @click="exportPdf"
+              type="button"
+              class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>📄 PDF</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Contrôles Atelier à effectuer -->
+        <div v-if="report.checks && report.checks.length" class="space-y-2">
+          <div class="flex items-center justify-between text-xs font-bold border-b border-slate-800/80 pb-2">
+            <span class="text-slate-300 flex items-center gap-1.5">☑️ CONTRÔLES ATELIER À EFFECTUER</span>
+            <span class="text-blue-400">{{ completedChecksCount }}/{{ report.checks.length }} validé(s)</span>
+          </div>
+          <div class="space-y-1.5">
+            <label 
+              v-for="(chk, idx) in report.checks" 
+              :key="idx" 
+              class="flex items-start gap-2.5 p-2.5 rounded-xl bg-[#080d1a] border border-slate-800/80 cursor-pointer hover:border-slate-700 transition"
+            >
+              <input type="checkbox" v-model="chk.done" class="mt-0.5 rounded border-slate-700 text-blue-600 focus:ring-0">
+              <span :class="chk.done ? 'line-through text-slate-500' : 'text-slate-300'" class="text-xs leading-snug">
+                {{ chk.label }}
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Analyse Technique -->
+        <div class="space-y-1.5">
+          <h4 class="text-xs font-bold text-white uppercase tracking-wider">Analyse technique</h4>
+          <p class="text-xs text-slate-300 leading-relaxed bg-[#080d1a] p-4 rounded-xl border border-slate-800">
+            {{ report.technical_analysis }}
+          </p>
+        </div>
+
+        <!-- Causes Probables -->
+        <div class="space-y-1.5">
+          <h4 class="text-xs font-bold text-white uppercase tracking-wider">Causes probables</h4>
+          <ul class="space-y-1.5 bg-[#080d1a] p-4 rounded-xl border border-slate-800 text-xs text-slate-300">
+            <li v-for="(cause, idx) in report.causes" :key="idx" class="flex items-start gap-2">
+              <span class="text-blue-400 font-bold">•</span>
+              <span><strong>{{ cause.title }} :</strong> {{ cause.detail }}</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Protocole Détaillé -->
+        <div class="space-y-1.5">
+          <h4 class="text-xs font-bold text-white uppercase tracking-wider">Protocole de contrôle électrique/mécanique détaillé</h4>
+          <div class="space-y-2.5 bg-[#080d1a] p-4 rounded-xl border border-slate-800 text-xs text-slate-300">
+            <div v-for="(step, idx) in report.steps" :key="idx" class="space-y-0.5">
+              <p class="font-bold text-blue-400">{{ idx + 1 }}. {{ step.title }} :</p>
+              <p class="text-slate-300 pl-3 leading-relaxed">{{ step.instruction }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pièces Suspectes -->
+        <div v-if="report.suspect_parts && report.suspect_parts.length" class="space-y-1.5">
+          <h4 class="text-xs font-bold text-white uppercase tracking-wider">Pièces suspectes</h4>
+          <ul class="space-y-1 bg-[#080d1a] p-3 rounded-xl border border-slate-800 text-xs text-slate-300">
+            <li v-for="(part, idx) in report.suspect_parts" :key="idx" class="flex items-center gap-2">
+              <span class="text-slate-500">•</span>
+              <span>{{ part }}</span>
+            </li>
+          </ul>
+        </div>
+
+      </article>
+
     </section>
 
     <!-- VUE 2 : MESURES ÉLECTRIQUES -->
@@ -236,7 +342,7 @@
     <!-- Modal Installation PWA -->
     <div 
       v-if="showInstallModal" 
-      class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+      class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 no-print"
     >
       <div class="bg-slate-900 border border-slate-700 rounded-t-3xl sm:rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
         <div class="flex items-center justify-between border-b border-slate-800 pb-3">
