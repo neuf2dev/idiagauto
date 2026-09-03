@@ -2,529 +2,279 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>iDiagAuto - Assistant IA Diagnostic Mécanique</title>
-  
+
+  <!-- PWA & Métas -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2563eb">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
+  <!-- Tailwind CSS & Vue 3 -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body class="bg-slate-900 text-slate-100 min-h-screen">
-  <div id="app" class="max-w-3xl mx-auto px-4 py-8">
-    
-    <!-- En-tête -->
-    <header class="text-center mb-6 no-print">
-      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-950/80 border border-blue-800 text-blue-400 text-xs font-semibold mb-3">
-        <span>⚡ Outils atelier & diagnostic assisté par IA</span>
-      </div>
-      <h1 class="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-        iDiag<span class="text-blue-500">Auto</span>
-      </h1>
-      <p class="mt-2 text-sm text-slate-400">
-        Diagnostic IA multimodal, contrôles électriques et fiches d'intervention
-      </p>
 
-      <div class="mt-4 flex flex-wrap justify-center gap-3">
+  <style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen pb-12 font-sans antialiased selection:bg-blue-600 selection:text-white">
+  <div id="app" class="max-w-md mx-auto min-h-screen flex flex-col bg-slate-950 shadow-2xl relative">
+
+    <!-- En-tête Mobile -->
+    <header class="p-4 bg-slate-900/90 backdrop-blur border-b border-slate-800 sticky top-0 z-30">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">⚡</span>
+          <div>
+            <h1 class="text-lg font-black tracking-tight text-white leading-none">
+              iDiag<span class="text-blue-500">Auto</span>
+            </h1>
+            <p class="text-[10px] text-slate-400 font-medium">Diagnostic & protocoles atelier</p>
+          </div>
+        </div>
+
+        <!-- Bouton Installer persistant -->
         <button 
-          @click="installPwa"
+          @click="handleInstallClick"
           type="button"
-          class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow-lg hover:shadow-emerald-500/20 transition cursor-pointer"
+          class="bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg shadow transition cursor-pointer flex items-center gap-1"
         >
-          <span>📲 Installer l'application sur ce téléphone</span>
+          <span>📲</span>
+          <span>Installer</span>
         </button>
       </div>
 
-      <!-- Navigation par onglets -->
-      <div class="mt-6 flex justify-center border-b border-slate-700">
-        <div class="flex flex-wrap justify-center gap-2">
-          <button 
-            type="button"
-            @click="currentTab = 'diag'"
-            :class="currentTab === 'diag' ? 'border-b-2 border-blue-500 text-blue-400 font-bold' : 'text-slate-400 hover:text-slate-200'"
-            class="px-3 sm:px-4 py-2 text-sm transition cursor-pointer flex items-center gap-1.5"
-          >
-            <span>🔍 Diagnostic IA</span>
-          </button>
-          <button 
-            type="button"
-            @click="currentTab = 'elec'"
-            :class="currentTab === 'elec' ? 'border-b-2 border-blue-500 text-blue-400 font-bold' : 'text-slate-400 hover:text-slate-200'"
-            class="px-3 sm:px-4 py-2 text-sm transition cursor-pointer flex items-center gap-1.5"
-          >
-            <span>⚡ Mesures Électriques</span>
-          </button>
-          <button 
-            type="button"
-            @click="currentTab = 'offline_dtc'"
-            :class="currentTab === 'offline_dtc' ? 'border-b-2 border-blue-500 text-blue-400 font-bold' : 'text-slate-400 hover:text-slate-200'"
-            class="px-3 sm:px-4 py-2 text-sm transition cursor-pointer flex items-center gap-1.5"
-          >
-            <span>📚 DTC Hors-Ligne</span>
-          </button>
-        </div>
-      </div>
+      <!-- Onglets de navigation -->
+      <nav class="mt-3 flex gap-2 border-b border-slate-800 pb-2 text-xs font-semibold">
+        <button 
+          @click="currentTab = 'diag'"
+          :class="currentTab === 'diag' ? 'text-blue-400 border-b-2 border-blue-500 pb-1' : 'text-slate-400 hover:text-slate-200'"
+          class="transition cursor-pointer"
+        >
+          🔍 Diagnostic IA
+        </button>
+        <button 
+          @click="currentTab = 'dtc'"
+          :class="currentTab === 'dtc' ? 'text-blue-400 border-b-2 border-blue-500 pb-1' : 'text-slate-400 hover:text-slate-200'"
+          class="transition cursor-pointer"
+        >
+          📖 DTC Hors-Ligne
+        </button>
+      </nav>
     </header>
 
-    <!-- ========================================================= -->
-    <!-- ONGLET 1 : DIAGNOSTIC IA                                 -->
-    <!-- ========================================================= -->
-    <div v-show="currentTab === 'diag'">
-      
-      <!-- Raccourcis de tests rapides -->
-      <div class="mb-4 no-print">
-        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">Exemples rapides :</span>
-        <div class="flex flex-wrap gap-2">
-          <button 
-            v-for="example in examples" 
-            :key="example.dtc"
-            type="button"
-            @click="fillExample(example)"
-            class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-md text-xs text-slate-300 transition cursor-pointer"
-          >
-            {{ example.vehicle }} · <span class="font-mono text-blue-400">{{ example.dtc }}</span>
-          </button>
-        </div>
-      </div>
+    <!-- Contenu Principal -->
+    <main class="p-4 space-y-4 flex-1">
 
-      <!-- Formulaire -->
-      <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-6 shadow-xl mb-8 no-print">
-        <form @submit.prevent="runDiagnostic" class="space-y-4">
+      <!-- VUE DIAGNOSTIC IA -->
+      <section v-if="currentTab === 'diag'" class="space-y-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3.5 shadow-md">
           
+          <!-- Véhicule avec persistance -->
           <div>
-            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-              Véhicule *
-            </label>
+            <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Véhicule *</label>
             <input 
-              v-model="form.vehicle" 
+              v-model="vehicle" 
+              @input="savePersistentData"
               type="text" 
-              required 
-              placeholder="Ex : BMW Série 3 E36 320i 1998, Opel Meriva 1.7 CDTI..." 
-              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              placeholder="Ex : Toyota Yaris 3 Hybride, BMW E36 320i..." 
+              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
             />
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Code DTC avec validation stricte -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                Code défaut (DTC)
-              </label>
+              <div class="flex items-center justify-between mb-1">
+                <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Code DTC *</label>
+                <span v-if="dtcError" class="text-[10px] text-amber-400 font-medium">{{ dtcError }}</span>
+              </div>
               <input 
-                v-model="form.dtc_code" 
+                v-model="dtcCode" 
+                @input="onDtcInput"
                 type="text" 
-                placeholder="Ex : P0340, P0170, DF154..." 
-                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 uppercase focus:outline-none focus:border-blue-500"
+                maxlength="5"
+                placeholder="Ex : P0300, C1252..." 
+                :class="dtcError ? 'border-amber-500 focus:border-amber-500' : 'border-slate-700 focus:border-blue-500'"
+                class="w-full uppercase font-mono bg-slate-950 border rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition"
               />
             </div>
+
+            <!-- Symptômes avec persistance -->
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                Symptômes observés
-              </label>
+              <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Symptômes</label>
               <input 
-                v-model="form.symptoms" 
+                v-model="symptoms" 
+                @input="savePersistentData"
                 type="text" 
-                placeholder="Ex : Bruit à chaud, ratés, fumée, calage..." 
-                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                placeholder="Ex : Voyant ABS, volant lourd..." 
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
               />
             </div>
           </div>
 
-          <!-- Bloc Photo -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-              Photo (Écran valise diag, bougie, fuite, courroie...) <span class="text-slate-500 lowercase font-normal">(optionnel)</span>
-            </label>
-            
-            <div class="flex items-center gap-3">
-              <label class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 border border-dashed border-slate-700 hover:border-blue-500 rounded-lg text-xs text-slate-300 cursor-pointer transition">
-                <span>📷 {{ imagePreview ? 'Changer la photo' : 'Prendre une photo ou importer' }}</span>
-                <input type="file" accept="image/*" @change="handleImageUpload" class="hidden" />
-              </label>
-              <button 
-                v-if="imagePreview" 
-                @click="removeImage" 
-                type="button" 
-                class="px-3 py-2.5 bg-red-950/60 border border-red-800 text-red-300 text-xs rounded-lg hover:bg-red-900/60 transition cursor-pointer"
-              >
-                Supprimer
-              </button>
-            </div>
-
-            <div v-if="imagePreview" class="mt-2.5 relative inline-block">
-              <img :src="imagePreview" alt="Aperçu photo" class="h-24 w-auto rounded-lg border border-slate-700 object-cover" />
-            </div>
-          </div>
-
+          <!-- Bouton Diagnostic -->
           <button 
-            type="submit" 
-            :disabled="loading"
-            class="w-full mt-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold py-3 px-4 rounded-lg transition duration-150 ease-in-out flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+            @click="startDiagnostic" 
+            :disabled="isLoading || !isFormValid"
+            :class="(!isFormValid || isLoading) ? 'opacity-50 cursor-not-allowed bg-slate-800 text-slate-400 border border-slate-700' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg cursor-pointer'"
+            class="w-full py-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
           >
-            <span v-if="loading" class="animate-spin">⏳</span>
-            <span>{{ loading ? 'Analyse technique en cours...' : 'Lancer le diagnostic' }}</span>
+            <span v-if="isLoading">⏳ Analyse en cours...</span>
+            <span v-else>🚀 Lancer le diagnostic</span>
           </button>
-        </form>
-
-        <div v-if="error" class="mt-4 p-3 bg-red-950/60 border border-red-800 rounded-lg text-red-300 text-xs">
-          {{ error }}
-        </div>
-      </div>
-
-      <!-- Zone Rapport Imprimable -->
-      <div id="printable-report" v-if="report" class="bg-slate-800/90 border border-slate-700 rounded-xl p-6 shadow-xl mb-8 space-y-6">
-        
-        <!-- Jauge de Gravité -->
-        <div 
-          :class="severityClasses"
-          class="p-4 rounded-xl border flex items-start gap-3 shadow-md print-box"
-        >
-          <span class="text-2xl">{{ severityIcon }}</span>
-          <div>
-            <h3 class="text-sm font-bold tracking-wide uppercase">{{ severityLabel }}</h3>
-            <p class="text-xs mt-0.5 opacity-90 leading-relaxed">{{ severityAdvice }}</p>
-          </div>
         </div>
 
-        <!-- Encart Visuel -->
-        <div v-if="activeImage" class="p-3 bg-slate-900/80 rounded-xl border border-blue-900/50 flex items-center gap-3 print-box">
-          <img :src="activeImage" alt="Élément analysé" class="h-16 w-24 object-cover rounded-lg border border-slate-700 shrink-0" />
-          <div class="text-xs">
-            <p class="font-bold text-blue-400 flex items-center gap-1.5">
-              <span>📷 Pièce / Écran analysé par l'IA</span>
-            </p>
-            <p class="text-slate-400 text-[11px] mt-0.5">
-              L'analyse technique ci-dessous intègre les indices visuels de cette photo.
-            </p>
-          </div>
-        </div>
-
-        <!-- En-tête du Rapport avec boutons WhatsApp et Email -->
-        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 pb-3">
-          <div>
-            <h2 class="text-lg font-bold text-white">Rapport technique</h2>
-            <span class="text-xs text-slate-400">{{ activeVehicle }}</span>
-          </div>
+        <!-- Rapport Technique -->
+        <article v-if="report" class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-4 shadow-xl">
           
-          <div class="flex flex-wrap items-center gap-2 actions-bar">
-            <!-- Bouton WhatsApp -->
-            <a 
-              :href="whatsappShareUrl" 
-              target="_blank"
-              class="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition shadow cursor-pointer"
+          <!-- Statut / Gravité -->
+          <div class="p-3 rounded-xl border bg-amber-950/30 border-amber-800/60 text-amber-300 space-y-1">
+            <h2 class="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+              <span>⚠️</span>
+              <span>{{ report.severity_title || 'Analyse système' }}</span>
+            </h2>
+            <p class="text-[11px] text-amber-200/90 leading-relaxed">
+              {{ report.severity_desc }}
+            </p>
+          </div>
+
+          <!-- Contrôles Atelier -->
+          <div v-if="report.checks && report.checks.length" class="space-y-2">
+            <div class="flex items-center justify-between text-xs text-slate-300 font-bold border-b border-slate-800 pb-1.5">
+              <span>☑️ CONTRÔLES ATELIER À EFFECTUER</span>
+              <span class="text-[11px] text-blue-400">{{ completedChecksCount }}/{{ report.checks.length }} validé(s)</span>
+            </div>
+            <div class="space-y-1.5">
+              <label 
+                v-for="(chk, idx) in report.checks" 
+                :key="idx" 
+                class="flex items-start gap-2.5 p-2 rounded-xl bg-slate-950/60 border border-slate-800/80 cursor-pointer hover:border-slate-700 transition"
+              >
+                <input type="checkbox" v-model="chk.done" class="mt-0.5 rounded border-slate-700 text-blue-600 focus:ring-0">
+                <span :class="chk.done ? 'line-through text-slate-500' : 'text-slate-300'" class="text-xs leading-snug">
+                  {{ chk.label }}
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Analyse Technique -->
+          <div class="space-y-1.5 text-xs">
+            <h3 class="font-bold text-white uppercase tracking-wider text-[11px]">Analyse technique</h3>
+            <p class="text-slate-300 leading-relaxed bg-slate-950 p-3 rounded-xl border border-slate-800">
+              {{ report.technical_analysis }}
+            </p>
+          </div>
+
+          <!-- Causes Probables -->
+          <div class="space-y-1.5 text-xs">
+            <h3 class="font-bold text-white uppercase tracking-wider text-[11px]">Causes probables</h3>
+            <ul class="space-y-1 bg-slate-950 p-3 rounded-xl border border-slate-800 text-slate-300">
+              <li v-for="(cause, idx) in report.causes" :key="idx" class="flex items-start gap-1.5 text-[11px]">
+                <span class="text-blue-400">•</span>
+                <span><strong>{{ cause.title }} :</strong> {{ cause.detail }}</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Protocole Électrique / Mécanique -->
+          <div class="space-y-1.5 text-xs">
+            <h3 class="font-bold text-white uppercase tracking-wider text-[11px]">Protocole de contrôle détaillé</h3>
+            <div class="space-y-2 bg-slate-950 p-3 rounded-xl border border-slate-800 text-slate-300 text-[11px]">
+              <div v-for="(step, idx) in report.steps" :key="idx" class="space-y-0.5">
+                <p class="font-bold text-blue-400">{{ idx + 1 }}. {{ step.title }} :</p>
+                <p class="text-slate-300 pl-3 leading-relaxed">{{ step.instruction }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Boutons de Partage -->
+          <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
+            <button 
+              @click="shareReportWhatsApp"
+              type="button"
+              class="flex items-center justify-center gap-1.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition"
             >
               <span>💬 WhatsApp</span>
-            </a>
-
-            <!-- Bouton Email -->
-            <a 
-              :href="emailShareUrl"
-              class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition shadow cursor-pointer"
-            >
-              <span>✉️ Email</span>
-            </a>
-
-            <!-- Télécharger PDF -->
-            <button 
-              type="button" 
-              @click="exportPdf" 
-              class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg transition border border-slate-600 cursor-pointer"
-            >
-              <span>📄 PDF</span>
             </button>
-
-            <!-- Copier -->
             <button 
-              type="button" 
-              @click="copyReport" 
-              class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg transition border border-slate-600 cursor-pointer"
+              @click="exportPdf"
+              type="button"
+              class="flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition"
             >
-              <span>{{ copied ? '✅ Copié !' : '📋 Copier' }}</span>
+              <span>📄 Imprimer / PDF</span>
             </button>
           </div>
-        </div>
+        </article>
+      </section>
 
-        <!-- Checklist Interactive d'Atelier -->
-        <div v-if="checklist.length > 0" class="p-4 bg-slate-900/90 rounded-xl border border-slate-700/80 print-box">
-          <div class="flex items-center justify-between mb-2.5">
-            <h3 class="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
-              <span>☑️ Contrôles Atelier à effectuer</span>
-            </h3>
-            <span class="text-[11px] font-mono text-slate-400">{{ completedCount }}/{{ checklist.length }} validé(s)</span>
-          </div>
+      <!-- VUE BASE DTC HORS-LIGNE -->
+      <section v-if="currentTab === 'dtc'" class="space-y-3">
+        <input 
+          v-model="dtcSearch" 
+          type="text" 
+          placeholder="Rechercher un code (ex: P0300, C1252)..." 
+          class="w-full uppercase font-mono bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+        />
 
-          <div class="w-full bg-slate-800 rounded-full h-1.5 mb-3 overflow-hidden no-print">
-            <div class="bg-blue-500 h-1.5 transition-all duration-300" :style="{ width: progressPercent + '%' }"></div>
-          </div>
-
-          <div class="space-y-2">
-            <label 
-              v-for="(item, idx) in checklist" 
-              :key="idx"
-              class="flex items-start gap-2.5 p-2 rounded-lg bg-slate-800/60 hover:bg-slate-800 border border-slate-700/50 cursor-pointer transition text-xs"
-            >
-              <input 
-                type="checkbox" 
-                v-model="item.checked" 
-                class="mt-0.5 rounded border-slate-600 bg-slate-900 text-blue-600 focus:ring-0 focus:ring-offset-0" 
-              />
-              <span :class="{ 'line-through text-slate-500': item.checked, 'text-slate-200': !item.checked }">
-                {{ item.text }}
-              </span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Contenu Markdown complet -->
-        <div class="report-content text-sm text-slate-200 leading-relaxed" v-html="parsedReport"></div>
-
-        <!-- Liens pièces détachées -->
-        <div class="mt-6 pt-5 border-t border-slate-700/80 no-print">
-          <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
-            🛒 Trouver les pièces pour ce véhicule
-          </h3>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-medium">
-            <a :href="oscaroLink" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center p-2.5 rounded-lg bg-slate-900 hover:bg-slate-700 border border-slate-700 text-slate-200 transition text-center">Oscaro ↗</a>
-            <a :href="autodocLink" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center p-2.5 rounded-lg bg-slate-900 hover:bg-slate-700 border border-slate-700 text-slate-200 transition text-center">Auto-Doc ↗</a>
-            <a :href="amazonPartsLink" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center p-2.5 rounded-lg bg-slate-900 hover:bg-slate-700 border border-slate-700 text-slate-200 transition text-center">Amazon Pièces ↗</a>
-          </div>
-        </div>
-
-        <!-- Outillage recommandé -->
-        <div class="mt-4 pt-4 border-t border-slate-700/60 no-print">
-          <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
-            🧰 Outillage recommandé pour les contrôles
-          </h3>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            <a href="https://www.amazon.fr/s?k=multimetre+automobile+numerique" target="_blank" rel="noopener noreferrer" class="flex items-center gap-3 p-3 rounded-lg bg-slate-900/90 hover:bg-slate-700/60 border border-slate-800 transition">
-              <span class="text-xl">⚡</span>
-              <div>
-                <p class="font-semibold text-slate-200">Multimètre automobile</p>
-                <p class="text-[11px] text-slate-400">Contrôle tension, masse et continuité</p>
-              </div>
-            </a>
-            <a href="https://www.amazon.fr/s?k=valise+diagnostic+auto+multimarque" target="_blank" rel="noopener noreferrer" class="flex items-center gap-3 p-3 rounded-lg bg-slate-900/90 hover:bg-slate-700/60 border border-slate-800 transition">
-              <span class="text-xl">📟</span>
-              <div>
-                <p class="font-semibold text-slate-200">Scanner OBD-II</p>
-                <p class="text-[11px] text-slate-400">Lecture des flux en direct et effacement</p>
-              </div>
-            </a>
-          </div>
-        </div>
-
-        <!-- Encart café -->
-        <div class="mt-6 pt-6 border-t border-slate-700/80 bg-slate-900/60 -mx-6 -mb-6 p-6 rounded-b-xl flex flex-col sm:flex-row items-center justify-between gap-4 no-print">
-          <div class="text-xs text-slate-400 text-center sm:text-left">
-            <p class="font-semibold text-slate-200">Ce diagnostic t'a fait gagner du temps ?</p>
-            <p>Soutiens l'hébergement et les requêtes IA pour garder l'outil gratuit.</p>
-          </div>
-          <a href="https://buymeacoffee.com" target="_blank" class="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-lg text-xs transition shrink-0">
-            ☕ Offrir un café au dev
-          </a>
-        </div>
-      </div>
-
-      <!-- Historique -->
-      <div v-if="history.length > 0" class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-6 no-print">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider">Historique récent</h3>
-          <button @click="clearHistory" type="button" class="text-xs text-slate-500 hover:text-red-400 transition cursor-pointer">
-            Effacer l'historique
-          </button>
-        </div>
         <div class="space-y-2">
           <div 
-            v-for="(item, index) in history" 
-            :key="index"
-            @click="loadFromHistory(item)"
-            class="flex items-center justify-between p-3 rounded-lg bg-slate-900/80 hover:bg-slate-700/50 border border-slate-800 cursor-pointer transition text-xs"
+            v-for="d in filteredDtcList" 
+            :key="d.code" 
+            class="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-1"
           >
-            <div class="flex items-center gap-2">
-              <span v-if="item.image" class="text-base">📷</span>
-              <span class="font-semibold text-white">{{ item.vehicle }}</span>
-              <span v-if="item.dtc_code" class="px-1.5 py-0.5 rounded bg-blue-950 text-blue-400 font-mono text-[11px] border border-blue-900">
-                {{ item.dtc_code }}
-              </span>
-              <span v-if="item.symptoms" class="text-slate-400 italic truncate max-w-[180px] inline-block align-bottom">
-                {{ item.symptoms }}
-              </span>
+            <div class="flex items-center justify-between">
+              <span class="font-mono font-bold text-blue-400 text-xs">{{ d.code }}</span>
+              <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded">{{ d.system }}</span>
             </div>
-            <span class="text-slate-500 text-[11px]">{{ item.date }}</span>
+            <p class="text-xs text-slate-200">{{ d.label }}</p>
           </div>
         </div>
+      </section>
+
+    </main>
+
+    <!-- Modal Installation PWA (iOS / Android) -->
+    <div 
+      v-if="showInstallModal" 
+      class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+    >
+      <div class="bg-slate-900 border border-slate-700 rounded-t-3xl sm:rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">📲</span>
+            <h3 class="text-sm font-bold text-white">Installer iDiagAuto</h3>
+          </div>
+          <button @click="showInstallModal = false" class="text-slate-400 hover:text-white text-base">✕</button>
+        </div>
+
+        <div class="text-xs text-slate-300 space-y-3">
+          <p>Ajoutez l'assistant sur votre écran d'accueil pour l'utiliser directement à l'atelier sans connexion Internet :</p>
+          
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5 text-[11px]">
+            <p class="font-bold text-blue-400">Sur iPhone (Safari) :</p>
+            <p>1. Appuyez sur l'icône <strong>Partager</strong> (<span class="text-slate-200">carré avec flèche</span> en bas de l'écran).</p>
+            <p>2. Faites défiler vers le bas et sélectionnez <strong>« Sur l'écran d'accueil »</strong>.</p>
+          </div>
+
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5 text-[11px]">
+            <p class="font-bold text-blue-400">Sur Android (Chrome / Brave / Firefox) :</p>
+            <p>1. Appuyez sur les <strong>trois points</strong> du menu en haut à droite.</p>
+            <p>2. Choisissez <strong>« Installer l'application »</strong> ou <strong>« Ajouter à l'écran d'accueil »</strong>.</p>
+          </div>
+        </div>
+
+        <button 
+          @click="showInstallModal = false" 
+          class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition cursor-pointer"
+        >
+          J'ai compris
+        </button>
       </div>
-
-    </div>
-
-    <!-- ========================================================= -->
-    <!-- ONGLET 2 : CALCULATEUR MESURES ÉLECTRIQUES               -->
-    <!-- ========================================================= -->
-    <div v-show="currentTab === 'elec'" class="space-y-6">
-      
-      <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-6 shadow-xl space-y-5">
-        <div>
-          <h2 class="text-lg font-bold text-white flex items-center gap-2">
-            <span>⚡ Contrôle des Valeurs Électriques Atelier</span>
-          </h2>
-          <p class="text-xs text-slate-400 mt-1">
-            Sélectionne un organe mécanique, entre la mesure relevée au multimètre et vérifie immédiatement les tolérances.
-          </p>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-              Organe à contrôler
-            </label>
-            <select 
-              v-model="elecComponent" 
-              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value="battery_rest">Batterie 12V (Tension au repos)</option>
-              <option value="battery_cranking">Batterie (Chute de tension au démarrage)</option>
-              <option value="alternator">Alternateur (Tension moteur tournant)</option>
-              <option value="ignition_primary">Bobine d'allumage (Enroulement primaire)</option>
-              <option value="ignition_secondary">Bobine d'allumage (Enroulement secondaire)</option>
-              <option value="injector">Injecteur essence standard</option>
-              <option value="crank_sensor">Capteur PMH inductif (Résistance)</option>
-              <option value="temp_sensor">Sonde de température CTN (à 20°C)</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-              Valeur mesurée ({{ currentUnit }})
-            </label>
-            <input 
-              v-model.number="elecValue" 
-              type="number" 
-              step="any"
-              :placeholder="'Ex : ' + currentPlaceholder"
-              class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
-            />
-          </div>
-        </div>
-
-        <!-- Verdict de mesure -->
-        <div v-if="elecResult" :class="elecResult.boxClass" class="p-4 rounded-xl border flex items-start gap-3.5 transition">
-          <span class="text-2xl">{{ elecResult.icon }}</span>
-          <div class="space-y-1">
-            <h4 class="text-sm font-bold uppercase tracking-wider">{{ elecResult.status }}</h4>
-            <p class="text-xs leading-relaxed opacity-90">{{ elecResult.comment }}</p>
-            <div class="pt-2 text-[11px] font-mono opacity-80">
-              Plage nominale : {{ elecResult.range }}
-            </div>
-          </div>
-        </div>
-
-        <!-- Rappel multimètre -->
-        <div class="p-4 bg-slate-900/80 rounded-lg border border-slate-800 text-xs text-slate-400 space-y-2">
-          <p class="font-semibold text-slate-200">📌 Bonnes pratiques de mesure :</p>
-          <ul class="list-disc pl-4 space-y-1">
-            <li><strong>Résistance (Ω) :</strong> toujours mesurer composant débranché et contact coupé pour ne pas fausser la mesure ni endommager le multimètre.</li>
-            <li><strong>Tension (V) :</strong> multimètre en calibre Volts continu (DC). Pointes bien franches sur les bornes.</li>
-          </ul>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- ========================================================= -->
-    <!-- ONGLET 3 : DICTIONNAIRE DTC HORS-LIGNE                     -->
-    <!-- ========================================================= -->
-    <div v-show="currentTab === 'offline_dtc'" class="space-y-6">
-      
-      <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-6 shadow-xl space-y-4">
-        <div>
-          <div class="flex items-center justify-between">
-            <h2 class="text-lg font-bold text-white flex items-center gap-2">
-              <span>📚 Base de Données DTC Hors-Ligne</span>
-            </h2>
-            <span class="px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-800 text-emerald-300 text-[10px] font-bold">
-              100% Hors-Ligne
-            </span>
-          </div>
-          <p class="text-xs text-slate-400 mt-1">
-            Consulte les codes défauts atelier fréquents (EOBD standard & constructeurs) sans connexion Internet.
-          </p>
-        </div>
-
-        <!-- Barre de recherche -->
-        <div class="relative">
-          <input 
-            v-model="dtcSearchQuery" 
-            type="text" 
-            placeholder="Rechercher par code (ex: P0300, DF053...) ou par mot-clé (ex: sonde, bobine, FAP)..." 
-            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-          />
-          <button 
-            v-if="dtcSearchQuery" 
-            @click="dtcSearchQuery = ''"
-            type="button"
-            class="absolute right-3 top-2.5 text-slate-400 hover:text-white text-sm"
-          >
-            ✕
-          </button>
-        </div>
-
-        <!-- Compteur de résultats -->
-        <div class="text-[11px] text-slate-400 flex justify-between items-center">
-          <span>{{ filteredDtcList.length }} code(s) répertorié(s)</span>
-          <span class="italic">Clique sur un code pour injecter dans le diag IA</span>
-        </div>
-
-        <!-- Liste des fiches DTC -->
-        <div class="space-y-3 max-h-[550px] overflow-y-auto pr-1">
-          <div 
-            v-for="item in filteredDtcList" 
-            :key="item.code"
-            class="p-4 bg-slate-900/90 border border-slate-800 rounded-xl hover:border-slate-700 transition space-y-2"
-          >
-            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
-              <div class="flex items-center gap-2">
-                <span class="font-mono font-bold text-sm text-blue-400 px-2 py-0.5 rounded bg-blue-950/80 border border-blue-900">
-                  {{ item.code }}
-                </span>
-                <span class="text-xs font-semibold text-white">{{ item.title }}</span>
-              </div>
-              <span class="text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-semibold"
-                :class="item.system === 'Allumage' ? 'bg-amber-950 text-amber-300 border border-amber-800' :
-                        item.system === 'Injection' ? 'bg-red-950 text-red-300 border border-red-800' :
-                        item.system === 'Dépollution' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' :
-                        'bg-slate-800 text-slate-300 border border-slate-700'"
-              >
-                {{ item.system }}
-              </span>
-            </div>
-
-            <div class="text-xs text-slate-300 space-y-1">
-              <p><strong class="text-slate-400">Causes probables :</strong> {{ item.causes }}</p>
-              <p><strong class="text-slate-400">Contrôle atelier :</strong> {{ item.check }}</p>
-            </div>
-
-            <div class="pt-2 flex justify-end">
-              <button 
-                @click="injectDtcToDiag(item)"
-                type="button"
-                class="px-2.5 py-1 bg-slate-800 hover:bg-blue-600 hover:text-white border border-slate-700 rounded-md text-[11px] text-slate-300 transition cursor-pointer flex items-center gap-1.5"
-              >
-                <span>🚀 Analyser avec l'IA</span>
-              </button>
-            </div>
-          </div>
-
-          <div v-if="filteredDtcList.length === 0" class="text-center py-8 text-xs text-slate-500">
-            Aucun code DTC ne correspond à votre recherche.
-          </div>
-        </div>
-
-      </div>
-
     </div>
 
   </div>
