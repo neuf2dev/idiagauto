@@ -105,16 +105,20 @@
       <!-- Cadre Formulaire -->
       <div class="bg-[#0b1329] border border-slate-800/90 rounded-2xl p-6 space-y-4 shadow-xl">
         
-        <!-- Véhicule -->
+        <!-- Véhicule avec historique datalist -->
         <div>
           <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">VÉHICULE *</label>
           <input 
             v-model="vehicle" 
             @input="savePersistentData"
             type="text" 
+            list="vehicles-history"
             placeholder="Ex : BMW Série 3 E36 320i 1998, Opel Meriva 1.7 CDTI..." 
             class="w-full bg-[#080d1a] border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-blue-500 transition"
           />
+          <datalist id="vehicles-history">
+            <option v-for="v in vehicleHistory" :key="v" :value="v"></option>
+          </datalist>
         </div>
 
         <!-- DTC et Symptômes -->
@@ -129,10 +133,14 @@
               @input="onDtcInput"
               type="text" 
               maxlength="5"
+              list="dtc-history"
               placeholder="EX : P0340, P0170, DF154..." 
               :class="dtcError ? 'border-amber-500 focus:border-amber-500' : 'border-slate-800 focus:border-blue-500'"
               class="w-full uppercase font-mono bg-[#080d1a] border rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none transition"
             />
+            <datalist id="dtc-history">
+              <option v-for="c in dtcHistory" :key="c" :value="c"></option>
+            </datalist>
           </div>
 
           <div>

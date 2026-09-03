@@ -4,14 +4,18 @@ createApp({
   setup() {
     const currentTab = ref('diag');
 
-    // Persistance
+    // Persistance des valeurs actuelles
     const vehicle = ref(localStorage.getItem('idiag_vehicle') || '');
+    const dtcCode = ref(localStorage.getItem('idiag_dtc') || '');
     const symptoms = ref(localStorage.getItem('idiag_symptoms') || '');
-    const dtcCode = ref('');
     const dtcError = ref('');
     const isLoading = ref(false);
 
-    // Données des exemples rapides (avec label et code séparés)
+    // Listes d'historique pour l'autocomplétion datalist
+    const vehicleHistory = ref(JSON.parse(localStorage.getItem('idiag_vehicle_history') || '[]'));
+    const dtcHistory = ref(JSON.parse(localStorage.getItem('idiag_dtc_history') || '[]'));
+
+    // Exemples rapides
     const quickExamples = [
       { label: 'BMW 320i E36', code: 'P0340', vehicle: 'BMW Série 3 E36 320i 1998', symptoms: 'Manque de reprise, ralenti instable, démarrage difficile' },
       { label: 'Opel Meriva 1.7 CDTI', code: 'P0190', vehicle: 'Opel Meriva 1.7 CDTI', symptoms: 'Coupure moteur sous forte charge, voyant clé' },
@@ -30,18 +34,32 @@ createApp({
       { code: 'U0100', system: 'Réseau CAN', label: 'Perte de communication avec le calculateur moteur (ECM/PCM)' }
     ]);
 
-    // PWA
+    // PWA Prompt
     const installPrompt = ref(null);
     const showInstallModal = ref(false);
 
+    // Sauvegarde automatique des valeurs dans les champs
     const savePersistentData = () => {
       localStorage.setItem('idiag_vehicle', vehicle.value);
+      localStorage.setItem('idiag_dtc', dtcCode.value);
       localStorage.setItem('idiag_symptoms', symptoms.value);
+    };
+
+    // Sauvegarde d'un nouvel élément dans l'historique de complétion
+    const addToHistory = (item, listRef, storageKey) => {
+      const cleanItem = item.trim();
+      if (!cleanItem) return;
+      if (!listRef.value.includes(cleanItem)) {
+        listRef.value.unshift(cleanItem);
+        if (listRef.value.length > 20) listRef.value.pop(); // Garde les 20 plus récents
+        localStorage.setItem(storageKey, JSON.stringify(listRef.value));
+      }
     };
 
     const onDtcInput = () => {
       dtcCode.value = dtcCode.value.toUpperCase().trim();
       const val = dtcCode.value;
+      savePersistentData();
 
       if (!val) {
         dtcError.value = '';
@@ -86,6 +104,10 @@ createApp({
       isLoading.value = true;
       savePersistentData();
 
+      // Enregistre dans l'historique de complétion
+      addToHistory(vehicle.value, vehicleHistory, 'idiag_vehicle_history');
+      addToHistory(dtcCode.value, dtcHistory, 'idiag_dtc_history');
+
       setTimeout(() => {
         isLoading.value = false;
       }, 500);
@@ -112,6 +134,11 @@ createApp({
         e.preventDefault();
         installPrompt.value = e;
       });
+
+      // Valide le code dès l'ouverture s'il était déjà en mémoire
+      if (dtcCode.value) {
+        onDtcInput();
+      }
     });
 
     return {
@@ -124,6 +151,8 @@ createApp({
       quickExamples,
       dtcSearch,
       filteredDtcList,
+      vehicleHistory,
+      dtcHistory,
       showInstallModal,
       savePersistentData,
       onDtcInput,
